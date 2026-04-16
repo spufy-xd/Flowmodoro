@@ -1,0 +1,33 @@
+/* ── Common base styles ─────────────────────────────────────────────────── */
+/* Shared across all pages (main menu, future modules).                     */
+
+[hidden] { display: none !important; }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0f0f0f;
+  color: #e0e0e0;
+  font-family: system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  user-select: none;
+}
+
+h1 {
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: #666;
+}
+
+a {
+  color: #74b3f0;
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
