@@ -102,7 +102,7 @@ h1 {
   cursor: pointer;
 }
 
-#ratio-input {
+#ratio-input, #break-input {
   width: 3.5rem;
   background: #1e1e1e;
   border: 1px solid #333;
@@ -114,8 +114,10 @@ h1 {
   appearance: textfield;
 }
 #ratio-input::-webkit-outer-spin-button,
-#ratio-input::-webkit-inner-spin-button { appearance: none; }
-#ratio-input:focus { outline: 1px solid #555; }
+#ratio-input::-webkit-inner-spin-button,
+#break-input::-webkit-outer-spin-button,
+#break-input::-webkit-inner-spin-button { appearance: none; }
+#ratio-input:focus, #break-input:focus { outline: 1px solid #555; }
 
 /* ── Timer ──────────────────────────────────────────────────────────────── */
 #timer {
@@ -301,7 +303,7 @@ h1 {
   height: 12px;
 }
 
-#ratio-input {
+#ratio-input, #break-input {
   width: 3rem;
   background: #0a0a0a;
   border: 1px solid #2a2a2a;
@@ -316,8 +318,10 @@ h1 {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 #ratio-input::-webkit-outer-spin-button,
-#ratio-input::-webkit-inner-spin-button { appearance: none; }
-#ratio-input:focus {
+#ratio-input::-webkit-inner-spin-button,
+#break-input::-webkit-outer-spin-button,
+#break-input::-webkit-inner-spin-button { appearance: none; }
+#ratio-input:focus, #break-input:focus {
   outline: none;
   border-color: #444;
   box-shadow: 0 0 0 2px rgba(116,179,240,0.12);

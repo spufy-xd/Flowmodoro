@@ -17,8 +17,10 @@ Flowmodoro/
 
 ## Fórmula
 ```
-breakSeconds = floor(workSeconds / ratio) + accumulated
+breakEarned  = floor(workSeconds * breakRatio / ratio)
+breakSeconds = breakEarned + accumulated
 ```
+Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descanso por ciclo (defaults: 25 y 5).
 
 ## Máquina de estados
 
@@ -33,7 +35,7 @@ breakSeconds = floor(workSeconds / ratio) + accumulated
 
 ### Timer de trabajo
 - `setInterval` incrementa `workSeconds` cada segundo en estado WORKING
-- Al parar: `breakEarned = floor(workSeconds / ratio)`, `breakSeconds = breakEarned + accumulated`
+- Al parar: `breakEarned = floor(workSeconds * breakRatio / ratio)`, `breakSeconds = breakEarned + accumulated`
 - Transición a BREAK_EARNED
 
 ### Estado BREAK_EARNED (pausa amarilla)
@@ -54,11 +56,12 @@ breakSeconds = floor(workSeconds / ratio) + accumulated
 - En la siguiente sesión, el acumulado se suma al descanso ganado
 
 ### Ratio configurable
-- Default: 5 (1 segundo de descanso por cada 5 de trabajo)
-- Guardado en `localStorage` (persiste entre recargas)
+- Dos valores: **minutos de descanso** (y) y **minutos de trabajo** (x). Defaults: 5 y 25.
+- Guardados en `localStorage` (`flowmodoro_break_ratio` y `flowmodoro_ratio`)
 - Primera vez: panel visible automáticamente
 - ⚙ en el título: toggle para mostrar/ocultar el panel
 - Se guarda en tiempo real mientras se escribe
+- **Solo visible en IDLE y BREAK_EARNED** — durante WORKING el panel oculta los inputs de ratio para evitar recálculos a mitad de sesión. Los cambios en BREAK_EARNED se aplican al continuar trabajando.
 
 ### Tiempo en el título de la pestaña
 - Checkbox "Mostrar tiempo en título" en el panel de ajustes

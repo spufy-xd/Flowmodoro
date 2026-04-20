@@ -1,7 +1,8 @@
 // ── State ──────────────────────────────────────────────────────────────────
 const STATE = { IDLE: 'IDLE', WORKING: 'WORKING', BREAK_EARNED: 'BREAK_EARNED', BREAK: 'BREAK' };
 
-let ratio          = parseInt(localStorage.getItem('flowmodoro_ratio') || '5', 10);
+let ratio          = parseInt(localStorage.getItem('flowmodoro_ratio')       || '25', 10);
+let breakRatio     = parseInt(localStorage.getItem('flowmodoro_break_ratio') || '5',  10);
 let accumulated    = 0; // leftover break seconds from skipped breaks
 
 let state          = STATE.IDLE;
@@ -26,6 +27,14 @@ function saveRatio(val) {
   }
 }
 
+function saveBreakRatio(val) {
+  const n = parseInt(val, 10);
+  if (!isNaN(n) && n >= 1) {
+    breakRatio = n;
+    localStorage.setItem('flowmodoro_break_ratio', n);
+  }
+}
+
 // ── DOM refs ───────────────────────────────────────────────────────────────
 const timerEl   = document.getElementById('timer');
 const infoEl    = document.getElementById('info');
@@ -34,6 +43,8 @@ const btnEl     = document.getElementById('btn');
 const btn2El    = document.getElementById('btn2');
 const btn3El    = document.getElementById('btn3');
 const ratioInput   = document.getElementById('ratio-input');
+const breakInput   = document.getElementById('break-input');
+const ratioLabelEl = document.getElementById('ratio-label');
 const ratioPanel   = document.getElementById('ratio-panel');
 const gearBtn      = document.getElementById('gear-btn');
 const titleCheckEl = document.getElementById('title-check');
@@ -47,6 +58,7 @@ if (!localStorage.getItem('flowmodoro_ratio')) {
   ratioPanel.hidden = false;
 }
 ratioInput.value = ratio;
+breakInput.value = breakRatio;
 titleCheckEl.checked = localStorage.getItem('flowmodoro_title') === '1';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -93,7 +105,7 @@ function restoreSession() {
       workSeconds = workSecondsBase + Math.floor((Date.now() - savedWorkStart) / 1000);
     }
     // Pause so user decides to continue or rest
-    breakEarned  = Math.floor(workSeconds / ratio);
+    breakEarned  = Math.floor(workSeconds * breakRatio / ratio);
     breakSeconds = breakEarned + accumulated;
     state        = STATE.BREAK_EARNED;
 
@@ -122,6 +134,8 @@ function restoreSession() {
 
 // ── Render ─────────────────────────────────────────────────────────────────
 function render() {
+  ratioLabelEl.hidden = (state === STATE.WORKING);
+
   if (state === STATE.IDLE) {
     timerEl.textContent  = formatTime(workSeconds);
     timerEl.className    = 'idle';
@@ -222,7 +236,7 @@ function startWork() {
 function stopWork() {
   clearInterval(intervalId);
   intervalId  = null;
-  breakEarned  = Math.floor(workSeconds / ratio);
+  breakEarned  = Math.floor(workSeconds * breakRatio / ratio);
   breakSeconds = breakEarned + accumulated;
   state        = STATE.BREAK_EARNED;
   render();
@@ -303,6 +317,10 @@ gearBtn.addEventListener('click', (e) => {
 // Save live as the user types — no auto-close
 ratioInput.addEventListener('input', () => {
   saveRatio(ratioInput.value);
+});
+
+breakInput.addEventListener('input', () => {
+  saveBreakRatio(breakInput.value);
 });
 
 // Prevent clicks inside the panel from bubbling to document

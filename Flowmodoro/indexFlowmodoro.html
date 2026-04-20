@@ -15,8 +15,10 @@
     <h1>Flowmodoro <button id="gear-btn" title="Configurar ratio">⚙</button><span id="reset-area"><button id="reset-btn" title="Reiniciar todo">↺</button><span id="reset-confirm" hidden>¿Reinicar?&nbsp;<button id="reset-yes-btn">Sí</button><button id="reset-no-btn">No</button></span></span></h1>
 
     <div id="ratio-panel" hidden>
-      <label>1 min descanso por cada
-        <input id="ratio-input" type="number" min="1" max="60" value="5" />
+      <label id="ratio-label">
+        <input id="break-input" type="number" min="1" max="60" value="5" />
+        min de descanso por cada
+        <input id="ratio-input" type="number" min="1" max="60" value="25" />
         min de trabajo
       </label>
       <label id="title-label">
