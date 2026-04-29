@@ -1,16 +1,20 @@
 // ── State ──────────────────────────────────────────────────────────────────
 const STATE = { IDLE: 'IDLE', WORKING: 'WORKING', BREAK_EARNED: 'BREAK_EARNED', BREAK: 'BREAK' };
 
-let ratio          = parseInt(localStorage.getItem('flowmodoro_ratio')       || '25', 10);
-let breakRatio     = parseInt(localStorage.getItem('flowmodoro_break_ratio') || '5',  10);
-let accumulated    = 0; // leftover break seconds from skipped breaks
+let ratio          = parseInt(localStorage.getItem('flowmodoro_ratio')          || '25', 10);
+let breakRatio     = parseInt(localStorage.getItem('flowmodoro_break_ratio')    || '5',  10);
+let bonusMinutes   = parseInt(localStorage.getItem('flowmodoro_bonus_minutes')  || '10', 10);
+let bonusTarget    = parseInt(localStorage.getItem('flowmodoro_bonus_target')   || '60', 10);
+let accumulated    = 0;
 
-let state          = STATE.IDLE;
-let workSeconds    = 0;
-let breakEarned    = 0; // earned in this session only
-let breakSeconds   = 0; // total = earned + accumulated
-let breakRemaining = 0;
-let intervalId     = null;
+let state            = STATE.IDLE;
+let workSeconds      = 0;
+let breakEarned      = 0;
+let bonusEarned      = 0;
+let breakSeconds     = 0;
+let breakRemaining   = 0;
+let intervalId       = null;
+let bonusBaseSeconds = 0; // workSeconds at the start of the current work segment (resets on continueWork)
 
 // Wall-clock anchors — prevents drift and browser tab throttling
 let workStartTime   = null; // Date.now() when work interval started
@@ -35,6 +39,27 @@ function saveBreakRatio(val) {
   }
 }
 
+function saveBonusMinutes(val) {
+  const n = parseInt(val, 10);
+  if (!isNaN(n) && n >= 0) {
+    bonusMinutes = n;
+    localStorage.setItem('flowmodoro_bonus_minutes', n);
+  }
+}
+
+function saveBonusTarget(val) {
+  const n = parseInt(val, 10);
+  if (!isNaN(n) && n >= 1) {
+    bonusTarget = n;
+    localStorage.setItem('flowmodoro_bonus_target', n);
+  }
+}
+
+function calcBonusEarned(seconds) {
+  if (bonusMinutes === 0) return 0;
+  return Math.floor(seconds / (bonusTarget * 60)) * (bonusMinutes * 60);
+}
+
 // ── DOM refs ───────────────────────────────────────────────────────────────
 const timerEl   = document.getElementById('timer');
 const infoEl    = document.getElementById('info');
@@ -42,9 +67,12 @@ const statusEl  = document.getElementById('status');
 const btnEl     = document.getElementById('btn');
 const btn2El    = document.getElementById('btn2');
 const btn3El    = document.getElementById('btn3');
-const ratioInput   = document.getElementById('ratio-input');
-const breakInput   = document.getElementById('break-input');
-const ratioLabelEl = document.getElementById('ratio-label');
+const ratioInput        = document.getElementById('ratio-input');
+const breakInput        = document.getElementById('break-input');
+const bonusInput        = document.getElementById('bonus-input');
+const bonusTargetInput  = document.getElementById('bonus-target-input');
+const ratioLabelEl      = document.getElementById('ratio-label');
+const bonusLabelEl      = document.getElementById('bonus-label');
 const ratioPanel   = document.getElementById('ratio-panel');
 const gearBtn      = document.getElementById('gear-btn');
 const titleCheckEl = document.getElementById('title-check');
@@ -57,9 +85,11 @@ const resetNoBtn   = document.getElementById('reset-no-btn');
 if (!localStorage.getItem('flowmodoro_ratio')) {
   ratioPanel.hidden = false;
 }
-ratioInput.value = ratio;
-breakInput.value = breakRatio;
-titleCheckEl.checked = localStorage.getItem('flowmodoro_title') === '1';
+ratioInput.value       = ratio;
+breakInput.value       = breakRatio;
+bonusInput.value       = bonusMinutes;
+bonusTargetInput.value = bonusTarget;
+titleCheckEl.checked   = localStorage.getItem('flowmodoro_title') === '1';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -71,28 +101,41 @@ function formatTime(totalSeconds) {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
+// Like formatTime but omits the HH: prefix when there are no hours
+function formatShortTime(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0) return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  return `${pad(m)}:${pad(s)}`;
+}
+
 // ── Session persistence ────────────────────────────────────────────────────
 function saveSession() {
-  localStorage.setItem('flowmodoro_state',            state);
-  localStorage.setItem('flowmodoro_accumulated',      accumulated);
-  localStorage.setItem('flowmodoro_work_seconds',     workSeconds);
-  localStorage.setItem('flowmodoro_work_seconds_base',workSecondsBase);
-  localStorage.setItem('flowmodoro_work_start_time',  workStartTime  ?? '');
-  localStorage.setItem('flowmodoro_break_earned',     breakEarned);
-  localStorage.setItem('flowmodoro_break_seconds',    breakSeconds);
-  localStorage.setItem('flowmodoro_break_remaining',  breakRemaining);
-  localStorage.setItem('flowmodoro_break_total',      breakTotal);
-  localStorage.setItem('flowmodoro_break_start_time', breakStartTime ?? '');
+  localStorage.setItem('flowmodoro_state',             state);
+  localStorage.setItem('flowmodoro_accumulated',       accumulated);
+  localStorage.setItem('flowmodoro_work_seconds',      workSeconds);
+  localStorage.setItem('flowmodoro_work_seconds_base', workSecondsBase);
+  localStorage.setItem('flowmodoro_bonus_base_seconds',bonusBaseSeconds);
+  localStorage.setItem('flowmodoro_work_start_time',   workStartTime  ?? '');
+  localStorage.setItem('flowmodoro_break_earned',      breakEarned);
+  localStorage.setItem('flowmodoro_bonus_earned',      bonusEarned);
+  localStorage.setItem('flowmodoro_break_seconds',     breakSeconds);
+  localStorage.setItem('flowmodoro_break_remaining',   breakRemaining);
+  localStorage.setItem('flowmodoro_break_total',       breakTotal);
+  localStorage.setItem('flowmodoro_break_start_time',  breakStartTime ?? '');
 }
 
 function restoreSession() {
   const savedState = localStorage.getItem('flowmodoro_state');
   if (!savedState) return;
 
-  accumulated     = parseInt(localStorage.getItem('flowmodoro_accumulated')       || '0', 10);
-  workSecondsBase = parseInt(localStorage.getItem('flowmodoro_work_seconds_base') || '0', 10);
-  workSeconds     = parseInt(localStorage.getItem('flowmodoro_work_seconds')      || '0', 10);
-  breakEarned     = parseInt(localStorage.getItem('flowmodoro_break_earned')      || '0', 10);
+  accumulated      = parseInt(localStorage.getItem('flowmodoro_accumulated')        || '0', 10);
+  workSecondsBase  = parseInt(localStorage.getItem('flowmodoro_work_seconds_base')  || '0', 10);
+  bonusBaseSeconds = parseInt(localStorage.getItem('flowmodoro_bonus_base_seconds') || '0', 10);
+  workSeconds      = parseInt(localStorage.getItem('flowmodoro_work_seconds')       || '0', 10);
+  breakEarned      = parseInt(localStorage.getItem('flowmodoro_break_earned')       || '0', 10);
+  bonusEarned      = parseInt(localStorage.getItem('flowmodoro_bonus_earned')       || '0', 10);
   breakSeconds    = parseInt(localStorage.getItem('flowmodoro_break_seconds')     || '0', 10);
   breakRemaining  = parseInt(localStorage.getItem('flowmodoro_break_remaining')   || '0', 10);
   breakTotal      = parseInt(localStorage.getItem('flowmodoro_break_total')       || '0', 10);
@@ -106,7 +149,8 @@ function restoreSession() {
     }
     // Pause so user decides to continue or rest
     breakEarned  = Math.floor(workSeconds * breakRatio / ratio);
-    breakSeconds = breakEarned + accumulated;
+    bonusEarned  = calcBonusEarned(workSeconds);
+    breakSeconds = breakEarned + bonusEarned + accumulated;
     state        = STATE.BREAK_EARNED;
 
   } else if (savedState === STATE.BREAK_EARNED) {
@@ -135,12 +179,13 @@ function restoreSession() {
 // ── Render ─────────────────────────────────────────────────────────────────
 function render() {
   ratioLabelEl.hidden = (state === STATE.WORKING);
+  bonusLabelEl.hidden = (state !== STATE.BREAK_EARNED);
 
   if (state === STATE.IDLE) {
     timerEl.textContent  = formatTime(workSeconds);
     timerEl.className    = 'idle';
     infoEl.textContent   = accumulated > 0
-      ? `⏳ descanso acumulado: ${formatTime(accumulated)}`
+      ? `⏳ descanso acumulado: ${formatShortTime(accumulated)}`
       : '';
     statusEl.textContent = 'listo para empezar';
     btnEl.textContent = '▶ Iniciar';
@@ -149,9 +194,19 @@ function render() {
     btn3El.hidden     = true;
 
   } else if (state === STATE.WORKING) {
-    timerEl.textContent  = formatTime(workSeconds);
-    timerEl.className    = 'working';
-    infoEl.textContent   = '';
+    timerEl.textContent = formatTime(workSeconds);
+    timerEl.className   = 'working';
+    if (bonusMinutes > 0) {
+      const effectiveSecs = workSeconds - bonusBaseSeconds;
+      const targetSecs    = bonusTarget * 60;
+      const progressSecs  = effectiveSecs % targetSecs;
+      const cyclesDone    = Math.floor(effectiveSecs / targetSecs);
+      infoEl.innerHTML = cyclesDone > 0
+        ? `★ ×${cyclesDone} · <strong>${formatShortTime(progressSecs)}</strong> / ${formatShortTime(targetSecs)}`
+        : `objetivo: <strong>${formatShortTime(progressSecs)}</strong> / ${formatShortTime(targetSecs)}`;
+    } else {
+      infoEl.textContent = '';
+    }
     statusEl.textContent = 'trabajando…';
     btnEl.textContent    = '⏹ Parar';
     btnEl.className      = 'stop';
@@ -161,8 +216,9 @@ function render() {
   } else if (state === STATE.BREAK_EARNED) {
     timerEl.textContent = formatTime(breakSeconds);
     timerEl.className   = 'break-earned';
-    infoEl.innerHTML    = `Descanso obtenido: <strong>${formatTime(breakEarned)}</strong>`
-      + (accumulated > 0 ? `<br>Descanso acumulado: <strong>${formatTime(accumulated)}</strong>` : '');
+    const bonusStr      = bonusEarned > 0 ? ` <span class="bonus">+${formatShortTime(bonusEarned)} bonus</span>` : '';
+    infoEl.innerHTML    = `Descanso obtenido: <strong>${formatShortTime(breakEarned)}</strong>${bonusStr}`
+      + (accumulated > 0 ? `<br>Descanso acumulado: <strong>${formatShortTime(accumulated)}</strong>` : '');
     statusEl.innerHTML = `Trabajado: <strong>${formatTime(workSeconds)}</strong>`;
     btnEl.textContent    = '▶ Iniciar descanso';
     btnEl.className      = 'start-break';
@@ -171,10 +227,11 @@ function render() {
     btn3El.textContent   = 'Continuar →';
 
   } else if (state === STATE.BREAK) {
-    timerEl.textContent = formatTime(breakRemaining);
-    timerEl.className   = 'breaking';
-    infoEl.innerHTML    = `Descanso obtenido: <strong>${formatTime(breakEarned)}</strong>`
-      + (accumulated > 0 ? `<br>Descanso acumulado: <strong>${formatTime(accumulated)}</strong>` : '');
+    timerEl.textContent  = formatTime(breakRemaining);
+    timerEl.className    = 'breaking';
+    const bonusStr2      = bonusEarned > 0 ? ` <span class="bonus">+${formatShortTime(bonusEarned)} bonus</span>` : '';
+    infoEl.innerHTML     = `Descanso obtenido: <strong>${formatShortTime(breakEarned)}</strong>${bonusStr2}`
+      + (accumulated > 0 ? `<br>Descanso acumulado: <strong>${formatShortTime(accumulated)}</strong>` : '');
     const endTime = new Date(Date.now() + breakRemaining * 1000);
     const hh = pad(endTime.getHours());
     const mm = pad(endTime.getMinutes());
@@ -224,20 +281,22 @@ function tick() {
 
 // ── Transitions ────────────────────────────────────────────────────────────
 function startWork() {
-  workSeconds     = 0;
-  workSecondsBase = 0;
-  workStartTime   = Date.now();
-  breakSeconds    = 0;
-  state           = STATE.WORKING;
-  intervalId      = setInterval(tick, 1000);
+  workSeconds      = 0;
+  workSecondsBase  = 0;
+  bonusBaseSeconds = 0;
+  workStartTime    = Date.now();
+  breakSeconds     = 0;
+  state            = STATE.WORKING;
+  intervalId       = setInterval(tick, 1000);
   render();
 }
 
 function stopWork() {
   clearInterval(intervalId);
-  intervalId  = null;
+  intervalId   = null;
   breakEarned  = Math.floor(workSeconds * breakRatio / ratio);
-  breakSeconds = breakEarned + accumulated;
+  bonusEarned  = calcBonusEarned(workSeconds - bonusBaseSeconds);
+  breakSeconds = breakEarned + bonusEarned + accumulated;
   state        = STATE.BREAK_EARNED;
   render();
 }
@@ -259,16 +318,19 @@ function skipBreak() {
 }
 
 function goIdle() {
-  workSeconds = 0;
-  state       = STATE.IDLE;
+  workSeconds      = 0;
+  bonusBaseSeconds = 0;
+  bonusEarned      = 0;
+  state            = STATE.IDLE;
   render();
 }
 
 function continueWork() {
-  workSecondsBase = workSeconds;
-  workStartTime   = Date.now();
-  state           = STATE.WORKING;
-  intervalId      = setInterval(tick, 1000);
+  bonusBaseSeconds = workSeconds; // reset bonus progress for the new work segment
+  workSecondsBase  = workSeconds;
+  workStartTime    = Date.now();
+  state            = STATE.WORKING;
+  intervalId       = setInterval(tick, 1000);
   render();
 }
 
@@ -323,6 +385,14 @@ breakInput.addEventListener('input', () => {
   saveBreakRatio(breakInput.value);
 });
 
+bonusInput.addEventListener('input', () => {
+  saveBonusMinutes(bonusInput.value);
+});
+
+bonusTargetInput.addEventListener('input', () => {
+  saveBonusTarget(bonusTargetInput.value);
+});
+
 // Prevent clicks inside the panel from bubbling to document
 ratioPanel.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -358,19 +428,23 @@ document.addEventListener('click', () => {
 resetYesBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   clearInterval(intervalId);
-  intervalId     = null;
-  workSeconds    = 0;
-  breakEarned    = 0;
-  breakSeconds   = 0;
-  breakRemaining = 0;
-  accumulated    = 0;
-  state          = STATE.IDLE;
+  intervalId       = null;
+  workSeconds      = 0;
+  bonusBaseSeconds = 0;
+  breakEarned      = 0;
+  bonusEarned      = 0;
+  breakSeconds     = 0;
+  breakRemaining   = 0;
+  accumulated      = 0;
+  state            = STATE.IDLE;
   localStorage.removeItem('flowmodoro_state');
   localStorage.removeItem('flowmodoro_accumulated');
   localStorage.removeItem('flowmodoro_work_seconds');
   localStorage.removeItem('flowmodoro_work_seconds_base');
+  localStorage.removeItem('flowmodoro_bonus_base_seconds');
   localStorage.removeItem('flowmodoro_work_start_time');
   localStorage.removeItem('flowmodoro_break_earned');
+  localStorage.removeItem('flowmodoro_bonus_earned');
   localStorage.removeItem('flowmodoro_break_seconds');
   localStorage.removeItem('flowmodoro_break_remaining');
   localStorage.removeItem('flowmodoro_break_total');

@@ -303,7 +303,7 @@ h1 {
   height: 12px;
 }
 
-#ratio-input, #break-input {
+#ratio-input, #break-input, #bonus-input, #bonus-target-input {
   width: 3rem;
   background: #0a0a0a;
   border: 1px solid #2a2a2a;
@@ -320,13 +320,20 @@ h1 {
 #ratio-input::-webkit-outer-spin-button,
 #ratio-input::-webkit-inner-spin-button,
 #break-input::-webkit-outer-spin-button,
-#break-input::-webkit-inner-spin-button { appearance: none; }
-#ratio-input:focus, #break-input:focus {
+#break-input::-webkit-inner-spin-button,
+#bonus-input::-webkit-outer-spin-button,
+#bonus-input::-webkit-inner-spin-button,
+#bonus-target-input::-webkit-outer-spin-button,
+#bonus-target-input::-webkit-inner-spin-button { appearance: none; }
+#ratio-input:focus, #break-input:focus,
+#bonus-input:focus, #bonus-target-input:focus {
   outline: none;
   border-color: #444;
   box-shadow: 0 0 0 2px rgba(116,179,240,0.12);
   color: #eee;
 }
+
+#bonus-label { border-top: 1px solid #1e1e1e; }
 
 /* ── Timer ──────────────────────────────────────────────────────────────── */
 #timer {
@@ -360,6 +367,7 @@ h1 {
   line-height: 2.2;
 }
 #info strong { color: #bbb; font-weight: 500; }
+#info .bonus  { color: #7ee8a2; }
 #status strong { color: #e0e0e0; font-weight: 500; }
 
 /* ── Status ─────────────────────────────────────────────────────────────── */

@@ -63,6 +63,15 @@ Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descans
 - Se guarda en tiempo real mientras se escribe
 - **Solo visible en IDLE y BREAK_EARNED** — durante WORKING el panel oculta los inputs de ratio para evitar recálculos a mitad de sesión. Los cambios en BREAK_EARNED se aplican al continuar trabajando.
 
+### Panel de bonus
+- Configuración de **minutos extra** (y) por cada **minutos seguidos** (x). Defaults: 10 y 60.
+- El panel de bonus **solo aparece en BREAK_EARNED** (estado amarillo) — no en IDLE ni WORKING.
+- Los cambios en el panel **no modifican el descanso ya obtenido**. Se aplican a partir del siguiente ciclo de trabajo.
+- El progreso hacia el bonus se **reinicia a cero** cada vez que se reanuda el trabajo (`Continuar →`), aunque el timer de trabajo siga acumulando segundos. Esto garantiza que solo se premia el esfuerzo continuo sin interrupciones.
+
+### Formato de tiempo corto
+- El tiempo de **descanso obtenido**, **bonus** y **acumulado** se muestra sin el prefijo de horas cuando el valor es menor de 1 hora (`MM:SS` en vez de `00:MM:SS`).
+
 ### Tiempo en el título de la pestaña
 - Checkbox "Mostrar tiempo en título" en el panel de ajustes
 - Preferencia guardada en `localStorage` (`flowmodoro_title`)
@@ -96,3 +105,6 @@ Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descans
 - Amarillo `#f9c74f` → pausa (descanso ganado pero no iniciado)
 - Verde `#7ee8a2` → countdown de descanso activo / botón iniciar descanso
 
+
+
+# Ideas y cambios a implementar
