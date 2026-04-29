@@ -13,11 +13,14 @@
 
   <div id="module">
 
-    <button id="collapse-btn" aria-expanded="false">
-      <span id="collapse-arrow">▶</span>
-      <span id="header-label">Cuenta atrás</span>
-      <span id="header-time" hidden></span>
-    </button>
+    <div id="header-row">
+      <button id="collapse-btn" aria-expanded="false">
+        <span id="collapse-arrow">▶</span>
+        <span id="header-label">Cuenta atrás</span>
+        <span id="header-time" hidden></span>
+      </button>
+      <button id="eye-btn" hidden title="Ocultar tiempo">👁</button>
+    </div>
 
     <div id="module-content" hidden>
 
@@ -28,17 +31,20 @@
           <input id="target-input" type="time" />
         </div>
         <p id="tomorrow-note" hidden></p>
-        <button id="start-btn">▶ Iniciar</button>
+        <div id="btn-row">
+          <button id="clear-btn" title="Limpiar datos">✕</button>
+          <button id="start-btn">▶ Iniciar</button>
+          <button id="delete-btn" title="Eliminar temporizador">🗑</button>
+        </div>
       </div>
 
       <div id="running" hidden>
         <div id="title-display"></div>
         <div id="timer">00:00:00</div>
-        <p id="status-text"></p>
+        <p id="end-time-label" hidden></p>
         <button id="cancel-btn">■ Cancelar</button>
       </div>
 
-      <button id="add-btn" disabled title="Próximamente">+ Nueva cuenta atrás</button>
 
     </div>
   </div>

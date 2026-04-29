@@ -19,14 +19,20 @@ body {
 }
 
 /* ── Collapse header ────────────────────────────────────────────────────── */
+#header-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
 #collapse-btn {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  width: 100%;
+  flex: 1;
   background: none;
   border: none;
-  color: #444;
+  color: #555;
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.45em;
@@ -36,15 +42,35 @@ body {
   text-align: left;
   transition: color 0.2s;
 }
-#collapse-btn:hover { color: #777; }
+#collapse-btn:hover { color: #f4a261; }
+
+#header-label {
+  flex: 1;
+  color: #666;
+  transition: color 0.2s;
+}
+#collapse-btn[aria-expanded="true"] #header-label { color: #f4a261; }
+#collapse-btn:hover #header-label                 { color: #f4a261; }
+
+#eye-btn {
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  padding: 0.9rem 1.1rem 0.9rem 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+#eye-btn:hover  { color: #f4a261; }
+#eye-btn.active { color: #666; }
 
 #collapse-arrow {
   font-size: 0.45rem;
   transition: transform 0.2s ease;
   display: inline-block;
 }
-
-#header-label { flex: 1; }
 
 #header-time {
   font-family: 'JetBrains Mono', monospace;
@@ -55,6 +81,7 @@ body {
 }
 #header-time.running { color: #f4a261; }
 #header-time.done    { color: #e76f51; }
+#header-time.endtime { color: #c88848; letter-spacing: 0.04em; }
 
 /* ── Content area ───────────────────────────────────────────────────────── */
 #module-content {
@@ -86,7 +113,7 @@ body {
   text-align: center;
   transition: border-color 0.2s;
 }
-#title-input::placeholder { color: #383838; }
+#title-input::placeholder { color: #666; }
 #title-input:focus { outline: none; border-color: #3a3a3a; }
 
 #time-row {
@@ -94,7 +121,7 @@ body {
   align-items: center;
   gap: 0.75rem;
   font-size: 0.75rem;
-  color: #555;
+  color: #666;
   letter-spacing: 0.06em;
 }
 
@@ -118,6 +145,44 @@ body {
   letter-spacing: 0.08em;
   opacity: 0.85;
 }
+
+/* ── Button row ─────────────────────────────────────────────────────────── */
+#btn-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+#clear-btn, #delete-btn {
+  background: none;
+  border: 1px solid #666;
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0.52rem 0.7rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  transition: border-color 0.2s, color 0.2s, transform 0.15s;
+  color: #363636;
+}
+#clear-btn:hover {
+  border-color: #4a4a4a;
+  color: #888;
+  transform: translateY(-1px);
+}
+#clear-btn:active { transform: translateY(0) scale(0.98); }
+
+#delete-btn {
+  color: #5a2020;
+  border-color: #482020;
+}
+#delete-btn:hover {
+  border-color: #a32e2e;
+  color: #e76f51;
+  transform: translateY(-1px);
+}
+#delete-btn:active { transform: translateY(0) scale(0.98); }
 
 /* ── Start button ───────────────────────────────────────────────────────── */
 #start-btn {
@@ -178,14 +243,17 @@ body {
 #timer.running { color: #f4a261; text-shadow: 0 0 60px rgba(244,162,97,0.15); }
 #timer.done    { color: #e76f51; text-shadow: 0 0 60px rgba(231,111,81,0.2); }
 
-#status-text {
-  font-size: 0.58rem;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: #454545;
-  min-height: 1em;
+
+/* ── End time label ─────────────────────────────────────────────────────── */
+#end-time-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 100;
+  font-size: 0.65rem;
+  color: #666;
+  letter-spacing: 0.06em;
+  text-align: center;
+  max-width: 5rem;
 }
-#status-text.done { color: #e76f51; }
 
 /* ── Cancel/Reset button ────────────────────────────────────────────────── */
 #cancel-btn {
@@ -205,15 +273,3 @@ body {
 #cancel-btn:hover  { border-color: #555; color: #999; transform: translateY(-1px); }
 #cancel-btn:active { transform: translateY(0) scale(0.98); }
 
-/* ── Add button (future) ────────────────────────────────────────────────── */
-#add-btn {
-  font-size: 0.6rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: #2a2a2a;
-  border: 1px dashed #1e1e1e;
-  border-radius: 4px;
-  background: none;
-  padding: 0.5rem 1.5rem;
-  cursor: not-allowed;
-}

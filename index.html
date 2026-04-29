@@ -16,36 +16,100 @@
       border: none;
     }
 
-    #countdown-wrapper {
+    #countdown-area {
       position: fixed;
       top: 1rem;
       left: 1rem;
       width: 270px;
       z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .countdown-wrapper {
       border-radius: 10px;
       overflow: hidden;
       box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.03);
     }
 
-    #frame-countdown {
+    .frame-countdown {
       display: block;
       width: 100%;
-      height: 42px; /* corrected by postMessage */
+      height: 42px;
       border: none;
+    }
+
+    #add-countdown-btn {
+      align-self: flex-start;
+      background: none;
+      border: 1px dashed #2a2a2a;
+      border-radius: 4px;
+      color: #3a3a3a;
+      cursor: pointer;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      padding: 0.4rem 1rem;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    #add-countdown-btn:hover {
+      border-color: #444;
+      color: #666;
     }
   </style>
 </head>
 <body>
-  <iframe id="frame-flowmodoro" src="Flowmodoro/indexFlowmodoro.html"></iframe>
+  <iframe id="frame-flowmodoro" src="flowmodoro/indexFlowmodoro.html"></iframe>
 
-  <div id="countdown-wrapper">
-    <iframe id="frame-countdown" src="countdown/indexCountdown.html" scrolling="no"></iframe>
+  <div id="countdown-area">
+    <div id="countdown-container"></div>
+    <button id="add-countdown-btn">+ Nueva cuenta atrás</button>
   </div>
 
   <script>
+    const container = document.getElementById('countdown-container');
+    const addBtn    = document.getElementById('add-countdown-btn');
+
+    let cdIds = JSON.parse(localStorage.getItem('countdown_ids') || '["0"]');
+
+    function addCountdownFrame(id, isNew = false) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'countdown-wrapper';
+      wrapper.id = `cd-wrapper-${id}`;
+
+      const iframe = document.createElement('iframe');
+      iframe.id        = `frame-countdown-${id}`;
+      iframe.className = 'frame-countdown';
+      const newParam   = isNew ? '&new=1' : '';
+      iframe.src       = `countdown/indexCountdown.html?id=${encodeURIComponent(id)}${newParam}`;
+      iframe.scrolling = 'no';
+
+      wrapper.appendChild(iframe);
+      container.appendChild(wrapper);
+    }
+
+    cdIds.forEach(id => addCountdownFrame(id));
+
+    addBtn.addEventListener('click', () => {
+      const newId = String(Date.now());
+      cdIds.push(newId);
+      localStorage.setItem('countdown_ids', JSON.stringify(cdIds));
+      addCountdownFrame(newId, true);
+    });
+
     window.addEventListener('message', (e) => {
-      if (e.data && e.data.type === 'countdown-resize') {
-        document.getElementById('frame-countdown').style.height = e.data.height + 'px';
+      if (!e.data) return;
+      if (e.data.type === 'countdown-resize') {
+        const frame = document.getElementById(`frame-countdown-${e.data.id}`);
+        if (frame) frame.style.height = e.data.height + 'px';
+      } else if (e.data.type === 'countdown-remove') {
+        const id = e.data.id;
+        cdIds = cdIds.filter(x => x !== id);
+        localStorage.setItem('countdown_ids', JSON.stringify(cdIds));
+        const wrapper = document.getElementById(`cd-wrapper-${id}`);
+        if (wrapper) wrapper.remove();
       }
     });
   </script>
