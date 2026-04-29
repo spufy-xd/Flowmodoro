@@ -108,3 +108,7 @@ Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descans
 
 
 # Ideas y cambios a implementar
+ - boton de añadir cuenta atras, fuera del widget de cuenta atras. añade un widget entero nuevo
+ - quitar el texto "contando", es redundante
+ - si se candela la cuenta atras, No se borran los datos, se mantiene el titulo y la hora (facil para retomar)
+ - al desplegar la cuenta atras, no muestra el titulo (ya se ve con el titulo general)

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cuenta atrás</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styleCountdown.css" />
+</head>
+<body>
+
+  <div id="module">
+
+    <button id="collapse-btn" aria-expanded="false">
+      <span id="collapse-arrow">▶</span>
+      <span id="header-label">Cuenta atrás</span>
+      <span id="header-time" hidden></span>
+    </button>
+
+    <div id="module-content" hidden>
+
+      <div id="setup">
+        <input id="title-input" type="text" placeholder="Título (opcional)" maxlength="60" autocomplete="off" spellcheck="false" />
+        <div id="time-row">
+          <label for="target-input">¿Hasta qué hora?</label>
+          <input id="target-input" type="time" />
+        </div>
+        <p id="tomorrow-note" hidden></p>
+        <button id="start-btn">▶ Iniciar</button>
+      </div>
+
+      <div id="running" hidden>
+        <div id="title-display"></div>
+        <div id="timer">00:00:00</div>
+        <p id="status-text"></p>
+        <button id="cancel-btn">■ Cancelar</button>
+      </div>
+
+      <button id="add-btn" disabled title="Próximamente">+ Nueva cuenta atrás</button>
+
+    </div>
+  </div>
+
+  <script src="appCountdown.js"></script>
+</body>
+</html>
