@@ -52,19 +52,6 @@ body {
 #collapse-btn[aria-expanded="true"] #header-label { color: #f4a261; }
 #collapse-btn:hover #header-label                 { color: #f4a261; }
 
-#eye-btn {
-  background: none;
-  border: none;
-  color: #555;
-  cursor: pointer;
-  padding: 0.9rem 1.1rem 0.9rem 0;
-  font-size: 0.75rem;
-  line-height: 1;
-  transition: color 0.2s;
-  flex-shrink: 0;
-}
-#eye-btn:hover  { color: #f4a261; }
-#eye-btn.active { color: #666; }
 
 #collapse-arrow {
   font-size: 0.45rem;
@@ -78,7 +65,10 @@ body {
   font-size: 1rem;
   letter-spacing: -0.01em;
   margin-left: auto;
+  cursor: pointer;
+  transition: opacity 0.15s;
 }
+#header-time:hover   { opacity: 0.7; }
 #header-time.running { color: #f4a261; }
 #header-time.done    { color: #e76f51; }
 #header-time.endtime { color: #c88848; letter-spacing: 0.04em; }
@@ -123,6 +113,34 @@ body {
   font-size: 0.75rem;
   color: #666;
   letter-spacing: 0.06em;
+}
+
+/* ── Mode toggle ────────────────────────────────────────────────────────── */
+#mode-toggle {
+  display: flex;
+  gap: 0.4rem;
+}
+
+#mode-toggle button {
+  background: none;
+  border: 1px solid #222;
+  border-radius: 99px;
+  color: #444;
+  font-size: 0.6rem;
+  font-family: inherit;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+#mode-toggle button:hover:not(.active) {
+  border-color: #333;
+  color: #666;
+}
+#mode-toggle button.active {
+  border-color: #f4a261;
+  color: #f4a261;
 }
 
 #target-input {

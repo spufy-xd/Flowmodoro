@@ -19,15 +19,18 @@
         <span id="header-label">Cuenta atrás</span>
         <span id="header-time" hidden></span>
       </button>
-      <button id="eye-btn" hidden title="Ocultar tiempo">👁</button>
     </div>
 
     <div id="module-content" hidden>
 
       <div id="setup">
         <input id="title-input" type="text" placeholder="Título (opcional)" maxlength="60" autocomplete="off" spellcheck="false" />
+        <div id="mode-toggle">
+          <button id="mode-time-btn">hora fin</button>
+          <button id="mode-dur-btn">duración</button>
+        </div>
         <div id="time-row">
-          <label for="target-input">¿Hasta qué hora?</label>
+          <label id="time-label" for="target-input">¿Hasta qué hora?</label>
           <input id="target-input" type="time" />
         </div>
         <p id="tomorrow-note" hidden></p>
