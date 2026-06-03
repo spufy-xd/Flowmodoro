@@ -101,7 +101,11 @@
 
     window.addEventListener('message', (e) => {
       if (!e.data) return;
-      if (e.data.type === 'countdown-resize') {
+      if (e.data.type === 'title-update') {
+        // El iframe de Flowmodoro no puede cambiar el título de la pestaña directamente;
+        // lo recibimos aquí y lo aplicamos al documento padre.
+        document.title = e.data.title;
+      } else if (e.data.type === 'countdown-resize') {
         const frame = document.getElementById(`frame-countdown-${e.data.id}`);
         if (frame) frame.style.height = e.data.height + 'px';
       } else if (e.data.type === 'countdown-remove') {

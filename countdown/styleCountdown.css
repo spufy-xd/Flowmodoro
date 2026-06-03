@@ -70,6 +70,7 @@ body {
 }
 #header-time:hover   { opacity: 0.7; }
 #header-time.running { color: #f4a261; }
+#header-time.paused  { color: #f4a261; opacity: 0.45; }
 #header-time.done    { color: #e76f51; }
 #header-time.endtime { color: #c88848; letter-spacing: 0.04em; }
 
@@ -259,6 +260,7 @@ body {
   transition: color 0.6s ease, text-shadow 0.6s ease;
 }
 #timer.running { color: #f4a261; text-shadow: 0 0 60px rgba(244,162,97,0.15); }
+#timer.paused  { color: #f4a261; opacity: 0.4; text-shadow: none; }
 #timer.done    { color: #e76f51; text-shadow: 0 0 60px rgba(231,111,81,0.2); }
 
 
@@ -273,9 +275,16 @@ body {
   max-width: 5rem;
 }
 
-/* ── Cancel/Reset button ────────────────────────────────────────────────── */
-#cancel-btn {
+/* ── Fila de botones del panel running ──────────────────────────────────── */
+#running-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-top: 0.25rem;
+}
+
+/* ── Botón pausar / reanudar / reiniciar ────────────────────────────────── */
+#cancel-btn {
   padding: 0.55rem 1.75rem;
   font-size: 0.65rem;
   font-weight: 700;
@@ -290,4 +299,37 @@ body {
 }
 #cancel-btn:hover  { border-color: #555; color: #999; transform: translateY(-1px); }
 #cancel-btn:active { transform: translateY(0) scale(0.98); }
+
+/* ── Botón eliminar en el panel running (solo visible en estado DONE) ────── */
+#done-delete-btn {
+  padding: 0.55rem 1rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border: 1px solid #482020;
+  border-radius: 2px;
+  background: transparent;
+  color: #5a2020;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, transform 0.15s;
+}
+#done-delete-btn:hover  { border-color: #a32e2e; color: #e76f51; transform: translateY(-1px); }
+#done-delete-btn:active { transform: translateY(0) scale(0.98); }
+
+/* ── Botón eliminar en el header colapsado (solo visible cuando DONE) ────── */
+#header-done-delete-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid #482020;
+  border-radius: 2px;
+  color: #5a2020;
+  cursor: pointer;
+  font-size: 0.65rem;
+  line-height: 1;
+  padding: 0.3rem 0.45rem;
+  margin-right: 0.6rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+#header-done-delete-btn:hover { border-color: #a32e2e; color: #e76f51; }
 

@@ -108,3 +108,7 @@ Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descans
 
 
 # Ideas y cambios a implementar
+- Cuando una cuenta atrás acabe, al lado del label "¡TIEMPO" deberá de aparecer el boton que permite eliminar la cuenta atras.
+	- También deberá de aparecer el botón de eliminar, junto al botón "reiniciar" al abrir la cuenta atrás terminada.
+
+- El descanso tambien debe aparecer en el titulo si se marca la opcion. De hecho, ahora mismo no funciona esa opcion.
