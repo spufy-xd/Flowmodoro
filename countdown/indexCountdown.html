@@ -19,6 +19,8 @@
         <span id="header-label">Cuenta atrás</span>
         <span id="header-time" hidden></span>
       </button>
+      <!-- Solo visible cuando la cuenta está terminada y colapsada -->
+      <button id="header-done-delete-btn" hidden title="Eliminar">🗑</button>
     </div>
 
     <div id="module-content" hidden>
@@ -45,13 +47,17 @@
         <div id="title-display"></div>
         <div id="timer">00:00:00</div>
         <p id="end-time-label" hidden></p>
-        <button id="cancel-btn">■ Cancelar</button>
+        <div id="running-btn-row">
+          <button id="cancel-btn">■ Cancelar</button>
+          <!-- Solo visible cuando la cuenta ha terminado (estado DONE) -->
+          <button id="done-delete-btn" hidden title="Eliminar temporizador">🗑 Eliminar</button>
+        </div>
       </div>
-
 
     </div>
   </div>
 
+  <script src="../utils.js"></script>
   <script src="appCountdown.js"></script>
 </body>
 </html>
