@@ -7,108 +7,107 @@ Abre con doble clic en `index.html` (sin instalación).
 ## Estructura
 ```
 Flowmodoro/
-  index.html                   ← redirect automático (futuro menú)
+  index.html                   ← shell: iframe de Flowmodoro + widgets de cuenta atrás
+  utils.js                     ← helpers compartidos (pad, formatTime, formatShortTime, playEndSound)
   style.css                    ← estilos base compartidos
-  flowmodoro/
-    indexFlowmodoro.html       ← app
+  Flowmodoro/
+    indexFlowmodoro.html       ← app principal
     appFlowmodoro.js           ← lógica completa (máquina de estados, timers, localStorage)
     styleFlowmodoro.css        ← estilos del módulo
+  countdown/
+    indexCountdown.html        ← widget de cuenta atrás
+    appCountdown.js            ← lógica completa
+    styleCountdown.css         ← estilos del módulo
 ```
 
 ## Fórmula
 ```
 breakEarned  = floor(workSeconds * breakRatio / ratio)
-breakSeconds = breakEarned + accumulated
+breakSeconds = breakEarned + bonusEarned + accumulatedBreak
 ```
 Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descanso por ciclo (defaults: 25 y 5).
 
-## Máquina de estados
+## Máquina de estados — Flowmodoro
 
 | Estado | Timer | Color | Acciones |
 |---|---|---|---|
-| IDLE | 00:00:00 | blanco | ▶ Iniciar |
+| IDLE | último trabajo | blanco | ▶ Iniciar |
 | WORKING | sube | azul | ⏹ Parar |
-| BREAK_EARNED | descanso total | amarillo | ▶ Iniciar descanso · Continuar → (btn3) |
+| BREAK_EARNED | descanso total | amarillo | ▶ Iniciar descanso · Continuar → |
 | BREAK | cuenta regresiva | verde | ⏭ Saltar descanso |
+
+## Máquina de estados — Countdown
+
+| Estado | Timer | Acción |
+|---|---|---|
+| IDLE | — | ▶ Iniciar |
+| RUNNING | cuenta atrás | ⏸ Pausar |
+| PAUSED | congelado | ▶ Reanudar |
+| DONE | 0, ¡Tiempo! | ↺ Reiniciar · 🗑 Eliminar |
 
 ## Lo que está implementado
 
 ### Timer de trabajo
-- `setInterval` incrementa `workSeconds` cada segundo en estado WORKING
-- Al parar: `breakEarned = floor(workSeconds * breakRatio / ratio)`, `breakSeconds = breakEarned + accumulated`
-- Transición a BREAK_EARNED
+- Reloj de pared (wall-clock anchor): `workSeconds = segmentStart + floor((Date.now() - workStartTime) / 1000)`. Evita drift y throttling del browser.
+- Al parar: calcula `breakEarned`, `bonusEarned`, `breakSeconds` y pasa a BREAK_EARNED.
 
-### Estado BREAK_EARNED (pausa amarilla)
-- Muestra "Descanso obtenido: X" y "Descanso acumulado: Y" (si Y > 0)
-- El timer grande muestra X + Y
-- **▶ Iniciar descanso** → lanza countdown (BREAK)
-- **Continuar →** (azul) → reanuda el timer de trabajo sin perder el descanso acumulado
+### Estado BREAK_EARNED
+- Muestra desglose: descanso ganado, bonus (si aplica), acumulado (si aplica).
+- **▶ Iniciar descanso** → lanza countdown (BREAK).
+- **Continuar →** → reanuda WORKING; reinicia el contador de bonus para el nuevo segmento.
 
 ### Countdown de descanso
-- `setInterval` decrementa `breakRemaining` cada segundo
-- Muestra "descansando… fin a las HH:MM" (hora real de fin)
-- Al llegar a 0: beep via Web Audio API, `accumulated = 0`, vuelve a IDLE
-- **⏭ Saltar descanso** (azul) → `accumulated = breakRemaining`, vuelve a IDLE
+- Mismo patrón wall-clock: `breakRemaining = breakDuration - floor((Date.now() - breakStartTime) / 1000)`.
+- Al llegar a 0: pitido vía Web Audio API, `accumulatedBreak = 0`, vuelve a IDLE.
+- **⏭ Saltar descanso** → `accumulatedBreak = breakRemaining`, vuelve a IDLE.
 
 ### Acumulación de descanso sobrante
-- Al saltar el descanso, el tiempo restante se guarda en `accumulated`
-- En IDLE se muestra "⏳ descanso acumulado: X" si hay sobrante
-- En la siguiente sesión, el acumulado se suma al descanso ganado
+- Al saltar el descanso, el tiempo restante se guarda en `accumulatedBreak`.
+- En IDLE se muestra "⏳ descanso acumulado: X" si hay sobrante.
+- El acumulado se suma al siguiente descanso ganado.
 
-### Ratio configurable
-- Dos valores: **minutos de descanso** (y) y **minutos de trabajo** (x). Defaults: 5 y 25.
-- Guardados en `localStorage` (`flowmodoro_break_ratio` y `flowmodoro_ratio`)
-- Primera vez: panel visible automáticamente
-- ⚙ en el título: toggle para mostrar/ocultar el panel
-- Se guarda en tiempo real mientras se escribe
-- **Solo visible en IDLE y BREAK_EARNED** — durante WORKING el panel oculta los inputs de ratio para evitar recálculos a mitad de sesión. Los cambios en BREAK_EARNED se aplican al continuar trabajando.
+### Panel de configuración (⚙)
+- **Ratio**: minutos de descanso (y) por cada minutos de trabajo (x). Defaults: 5 y 25.
+- **Bonus**: minutos extra (y) por cada minutos seguidos (x). Defaults: 10 y 60. Si `y = 0`, el bonus queda desactivado.
+- **Mostrar tiempo en título**: checkbox que actualiza la pestaña del navegador en tiempo real.
+- Los ajustes se guardan en tiempo real y sobreviven al reset completo.
+- Ratio y bonus se ocultan mientras se trabaja (para no cambiarlos a mitad de sesión).
+- Primera vez sin configuración guardada: panel visible automáticamente.
 
-### Panel de bonus
-- Configuración de **minutos extra** (y) por cada **minutos seguidos** (x). Defaults: 10 y 60.
-- El panel de bonus **solo aparece en BREAK_EARNED** (estado amarillo) — no en IDLE ni WORKING.
-- Los cambios en el panel **no modifican el descanso ya obtenido**. Se aplican a partir del siguiente ciclo de trabajo.
-- El progreso hacia el bonus se **reinicia a cero** cada vez que se reanuda el trabajo (`Continuar →`), aunque el timer de trabajo siga acumulando segundos. Esto garantiza que solo se premia el esfuerzo continuo sin interrupciones.
-
-### Formato de tiempo corto
-- El tiempo de **descanso obtenido**, **bonus** y **acumulado** se muestra sin el prefijo de horas cuando el valor es menor de 1 hora (`MM:SS` en vez de `00:MM:SS`).
+### Bonus por trabajo continuado
+- Durante WORKING se muestra el progreso: `objetivo: MM:SS / MM:SS`.
+- Si hay ciclos completados: `★ ×N · MM:SS / MM:SS`.
+- El bonus se reinicia al pulsar **Continuar →** (solo premia esfuerzo continuo sin interrupciones).
 
 ### Tiempo en el título de la pestaña
-- Checkbox "Mostrar tiempo en título" en el panel de ajustes
-- Preferencia guardada en `localStorage` (`flowmodoro_title`)
-- Cuando está activo, el `<title>` se actualiza en cada tick:
-  - WORKING: `▶ HH:MM:SS — Flowmodoro`
-  - BREAK_EARNED: `⏸ HH:MM:SS — Flowmodoro`
-  - BREAK: `☕ HH:MM:SS — Flowmodoro`
-  - IDLE: `Flowmodoro`
+- El app corre en un `<iframe>`; usa `postMessage` al documento padre para actualizar la pestaña real del navegador.
+- WORKING: `▶ HH:MM:SS — Flowmodoro`
+- BREAK_EARNED: `⏸ HH:MM:SS — Flowmodoro`
+- BREAK: `☕ HH:MM:SS — Flowmodoro`
+- IDLE: `Flowmodoro`
+
+### Widgets de cuenta atrás
+- Múltiples instancias independientes, cada una con su propio ID y claves en `localStorage`.
+- **Modo hora fin** (`HH:MM`): si la hora ya pasó hoy, cuenta hasta mañana. Muestra "mañana a las HH:MM".
+- **Modo duración** (`HH:MM:SS`): muestra "termina a las HH:MM" como preview.
+- Inputs de ambos modos persisten aunque se cambie de modo.
+- Pausa real: congela el tiempo restante; al reanudar recalcula el target desde el tiempo congelado.
+- Al terminar (DONE): botón 🗑 Eliminar visible en el panel expandido y en el header colapsado.
+- Colapsar/expandir: solo muestra el header con el tiempo restante en color.
 
 ### Persistencia de sesión
-- Al refrescar la página, el estado se restaura automáticamente.
-- En estado WORKING: al volver se muestra BREAK_EARNED con el descanso calculado, permitiendo decidir si descansar o continuar trabajando.
-- En estado BREAK: se restaura el countdown exacto donde se quedó.
-- En estado BREAK_EARNED: se restaura directamente.
-- `accumulated` también se persiste, por lo que el descanso acumulado sobrevive recargas.
+- Al refrescar, el estado se restaura automáticamente en todos los módulos.
+- WORKING al cerrar → reabre en BREAK_EARNED con el tiempo real transcurrido calculado.
+- BREAK al cerrar → restaura el countdown exacto; si ya expiró, va directo a IDLE.
 
 ### Reset completo
-- Botón `↺` en el encabezado (junto al ⚙)
-- Al pulsar muestra confirmación inline: "¿Reiniciar? Sí / No"
-- **Sí**: detiene cualquier timer activo, limpia todas las claves de `localStorage` relacionadas y vuelve a IDLE con todo a cero
-- **No / clic fuera**: cancela y vuelve a mostrar el botón `↺`
+- Botón `↺` en el encabezado.
+- Confirmación inline: "¿Reiniciar? Sí / No".
+- **Sí**: limpia toda la sesión pero mantiene la configuración (ratios, bonus, checkbox).
 
-### Estilo del timer
-- Fuente `JetBrains Mono` weight 100 (cargada desde Google Fonts)
-- Glow suave con el color del estado activo
-- En estado WORKING: animación de respiración (opacidad pulsa entre 100% y 65% cada 4s)
-- Transición de color suave entre estados (0.6s)
+### Estilo
+- Fuente `JetBrains Mono` weight 100 (Google Fonts).
+- Glow suave por estado. Animación de respiración en WORKING.
+- Colores: azul `#74b3f0` (working), amarillo `#f9c74f` (break earned), verde `#7ee8a2` (break), naranja `#f4a261` (countdown running).
 
-### Colores (código visual de estado destino)
-- Azul `#74b3f0` → trabajando / botones que llevan a trabajar
-- Amarillo `#f9c74f` → pausa (descanso ganado pero no iniciado)
-- Verde `#7ee8a2` → countdown de descanso activo / botón iniciar descanso
-
-
-
-# Ideas y cambios a implementar
-- Cuando una cuenta atrás acabe, al lado del label "¡TIEMPO" deberá de aparecer el boton que permite eliminar la cuenta atras.
-	- También deberá de aparecer el botón de eliminar, junto al botón "reiniciar" al abrir la cuenta atrás terminada.
-
-- El descanso tambien debe aparecer en el titulo si se marca la opcion. De hecho, ahora mismo no funciona esa opcion.
+# Ideas y bugs
