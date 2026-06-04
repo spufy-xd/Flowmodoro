@@ -1,12 +1,11 @@
 // ── Identificador de instancia ─────────────────────────────────────────────
-// Cada widget tiene su propio ID (un timestamp) para poder tener múltiples
+// Cada widget tiene su propio ID (timestamp) para tener múltiples
 // cuentas atrás independientes con sus propias claves de localStorage.
 const COUNTDOWN_ID = new URLSearchParams(window.location.search).get('id') || '0';
 const IS_NEW       = new URLSearchParams(window.location.search).get('new') === '1';
 
 // ── Claves de localStorage (todas prefijadas con el ID del widget) ──────────
-// Agruparlas aquí hace que deleteCountdown() limpie todo automáticamente
-// y que añadir una nueva clave sea un cambio de un solo lugar.
+// Añadir una clave aquí es suficiente para que deleteCountdown() la limpie automáticamente.
 const LS = {
   state:           `countdown_${COUNTDOWN_ID}_state`,
   title:           `countdown_${COUNTDOWN_ID}_title`,
@@ -21,10 +20,10 @@ const LS = {
 
 // ── Máquina de estados ─────────────────────────────────────────────────────
 const CD = {
-  IDLE:    'IDLE',    // sin cuenta activa, mostrando el formulario de configuración
-  RUNNING: 'RUNNING', // cuenta corriendo
-  PAUSED:  'PAUSED',  // cuenta congelada (se puede reanudar)
-  DONE:    'DONE',    // llegó a cero
+  IDLE:    'IDLE',     // sin cuenta activa, mostrando el formulario de configuración
+  RUNNING: 'RUNNING',  // cuenta corriendo
+  PAUSED:  'PAUSED',   // cuenta congelada (se puede reanudar)
+  DONE:    'DONE',     // llegó a cero
 };
 
 // ── Variables de estado ────────────────────────────────────────────────────
@@ -34,55 +33,53 @@ let cdTarget          = 0;    // Date.now() en ms cuando termina la cuenta
 let cdRemaining       = 0;    // segundos restantes (se recalcula en cada tick)
 let cdPausedRemaining = 0;    // segundos restantes en el momento de pausar
 let cdInterval        = null;
-let cdMode            = localStorage.getItem(LS.mode) || 'time'; // 'time' | 'duration'
+let cdMode            = lsStr(LS.mode, 'time'); // 'time' | 'duration'
 
-// Guardan el valor del input de cada modo al cambiar, para restaurarlo al volver
-let timeInputVal = ''; // valor del input cuando el modo activo era 'time'
-let durInputVal  = '00:00:00'; // valor del input cuando el modo activo era 'duration'
+// Valores del input de cada modo; se guardan al cambiar para restaurar al volver
+let timeInputVal = '';
+let durInputVal  = '00:00:00';
 
 const savedCollapsed = localStorage.getItem(LS.collapsed);
 let isCollapsed   = savedCollapsed !== null ? savedCollapsed === '1' : !IS_NEW;
 let showRemaining = localStorage.getItem(LS.showtime) !== '0'; // true = restante, false = hora fin
 
 // ── Referencias al DOM ─────────────────────────────────────────────────────
-const collapseBtn       = document.getElementById('collapse-btn');
-const collapseArrow     = document.getElementById('collapse-arrow');
-const headerLabel       = document.getElementById('header-label');
-const headerTime        = document.getElementById('header-time');
+const collapseBtn         = document.getElementById('collapse-btn');
+const collapseArrow       = document.getElementById('collapse-arrow');
+const headerLabel         = document.getElementById('header-label');
+const headerTime          = document.getElementById('header-time');
 const headerDoneDeleteBtn = document.getElementById('header-done-delete-btn');
-const moduleContent     = document.getElementById('module-content');
-const setupPanel        = document.getElementById('setup');
-const runningPanel      = document.getElementById('running');
-const titleInput        = document.getElementById('title-input');
-const targetInput       = document.getElementById('target-input');
-const timeLabelEl       = document.getElementById('time-label');
-const tomorrowNote      = document.getElementById('tomorrow-note');
-const clearBtn          = document.getElementById('clear-btn');
-const startBtn          = document.getElementById('start-btn');
-const deleteBtn         = document.getElementById('delete-btn');
-const titleDisplay      = document.getElementById('title-display');
-const timerEl           = document.getElementById('timer');
-const cancelBtn         = document.getElementById('cancel-btn');
-const doneDeleteBtn     = document.getElementById('done-delete-btn');
-const endTimeLabelEl    = document.getElementById('end-time-label');
-const modeTimeBtnEl     = document.getElementById('mode-time-btn');
-const modeDurBtnEl      = document.getElementById('mode-dur-btn');
+const moduleContent       = document.getElementById('module-content');
+const setupPanel          = document.getElementById('setup');
+const runningPanel        = document.getElementById('running');
+const titleInput          = document.getElementById('title-input');
+const targetInput         = document.getElementById('target-input');
+const timeLabelEl         = document.getElementById('time-label');
+const tomorrowNote        = document.getElementById('tomorrow-note');
+const clearBtn            = document.getElementById('clear-btn');
+const startBtn            = document.getElementById('start-btn');
+const deleteBtn           = document.getElementById('delete-btn');
+const titleDisplay        = document.getElementById('title-display');
+const timerEl             = document.getElementById('timer');
+const cancelBtn           = document.getElementById('cancel-btn');
+const doneDeleteBtn       = document.getElementById('done-delete-btn');
+const endTimeLabelEl      = document.getElementById('end-time-label');
+const modeTimeBtnEl       = document.getElementById('mode-time-btn');
+const modeDurBtnEl        = document.getElementById('mode-dur-btn');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-// Segundos que quedan hasta cdTarget calculados en tiempo real
-function getSecondsRemaining() {
-  return Math.max(0, Math.floor((cdTarget - Date.now()) / 1000));
-}
+// Segundos restantes hasta cdTarget, calculados en tiempo real
+const getSecondsRemaining = () =>
+  Math.max(0, Math.floor((cdTarget - Date.now()) / 1000));
 
-// Convierte ms timestamp a "HH:MM"
-function formatEndTime() {
+// Ms timestamp → "HH:MM"
+const formatEndTime = () => {
   const d = new Date(cdTarget);
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+};
 
-// Acepta MM, H:MM o H:MM:SS (formato del input type=time con step=1 o step=60)
-// y devuelve segundos totales. Solo se usa en modo duración.
+// Parsea HH:MM:SS (o subformatos) a segundos totales. Solo se usa en modo duración.
 function parseDuration(val) {
   const parts = val.trim().split(':').map(Number);
   if (!parts.length || parts.some(isNaN)) return 0;
@@ -92,8 +89,8 @@ function parseDuration(val) {
 }
 
 // ── Tick scheduling ────────────────────────────────────────────────────────
-// En vez de setInterval(1000), calculamos el delay hasta el próximo segundo exacto
-// del reloj real. Así todos los widgets se actualizan sincronizados y no hay drift.
+// setTimeout al próximo segundo exacto del reloj: sin drift y todos los
+// widgets actualizados en sincronía.
 function scheduleNextTick() {
   const msUntilNextSecond = 1000 - (Date.now() % 1000);
   cdInterval = setTimeout(() => {
@@ -112,7 +109,7 @@ function saveSession() {
   localStorage.setItem(LS.mode,            cdMode);
   localStorage.setItem(LS.pausedRemaining, cdPausedRemaining);
 
-  // Guardamos los dos modos por separado para que persistan aunque se cambie de modo
+  // Guardamos ambos modos por separado para que persistan al cambiar de modo
   if (cdMode === 'time') {
     localStorage.setItem(LS.input,    targetInput.value);
     localStorage.setItem(LS.altInput, durInputVal);
@@ -123,14 +120,14 @@ function saveSession() {
 }
 
 function restoreSession() {
-  cdTitle  = localStorage.getItem(LS.title)  || '';
-  cdTarget = parseInt(localStorage.getItem(LS.target) || '0', 10);
+  cdTitle  = lsStr(LS.title);
+  cdTarget = lsInt(LS.target);
 
   titleInput.value = cdTitle;
 
-  // Restauramos los valores guardados de cada modo
-  const savedActiveInput = localStorage.getItem(LS.input)    || '';
-  const savedAltInput    = localStorage.getItem(LS.altInput) || '';
+  // Restauramos los valores de cada modo por separado
+  const savedActiveInput = lsStr(LS.input);
+  const savedAltInput    = lsStr(LS.altInput);
   if (cdMode === 'time') {
     timeInputVal = savedActiveInput;
     durInputVal  = savedAltInput || '00:00:00';
@@ -139,8 +136,6 @@ function restoreSession() {
     timeInputVal = savedAltInput;
   }
 
-  // type="time" ya está en el HTML; solo ajustamos el step según el modo
-  // (step=60 → HH:MM para hora fin · step=1 → HH:MM:SS para duración)
   // IMPORTANTE: step debe ponerse antes que value, o el browser rechaza el formato
   targetInput.step  = cdMode === 'duration' ? '1' : '60';
   targetInput.value = cdMode === 'time' ? timeInputVal : durInputVal;
@@ -151,10 +146,10 @@ function restoreSession() {
     tomorrowNote.hidden      = false;
   }
 
-  const savedState = localStorage.getItem(LS.state);
+  const savedState = lsStr(LS.state);
   if (!savedState || savedState === CD.IDLE) return;
 
-  cdPausedRemaining = parseInt(localStorage.getItem(LS.pausedRemaining) || '0', 10);
+  cdPausedRemaining = lsInt(LS.pausedRemaining);
 
   if (savedState === CD.RUNNING) {
     cdRemaining = getSecondsRemaining();
@@ -176,7 +171,7 @@ function restoreSession() {
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
-// Lee el estado global y actualiza TODOS los nodos del DOM. Nunca se escribe
+// Lee el estado global y actualiza TODOS los nodos del DOM. No hay escrituras
 // al DOM fuera de esta función.
 function render() {
   const isExpanded = !isCollapsed;
@@ -185,13 +180,12 @@ function render() {
   collapseArrow.textContent = isExpanded ? '▼' : '▶';
   moduleContent.hidden      = !isExpanded;
 
-  // El header siempre muestra el título (o el nombre por defecto)
   headerLabel.textContent = cdTitle || 'Cuenta atrás';
 
-  // — Header en modo colapsado —
+  // — Header colapsado —
   const showHeaderTime = isCollapsed && cdState !== CD.IDLE;
-  headerTime.hidden             = !showHeaderTime;
-  headerDoneDeleteBtn.hidden    = !(isCollapsed && cdState === CD.DONE);
+  headerTime.hidden          = !showHeaderTime;
+  headerDoneDeleteBtn.hidden = !(isCollapsed && cdState === CD.DONE);
 
   if (showHeaderTime) {
     if (cdState === CD.DONE) {
@@ -199,15 +193,15 @@ function render() {
       headerTime.className   = 'done';
       headerTime.title       = '';
     } else if (cdState === CD.PAUSED) {
-      headerTime.textContent = '· ' + formatShortTime(cdPausedRemaining);
+      headerTime.textContent = `· ${formatShortTime(cdPausedRemaining)}`;
       headerTime.className   = 'paused';
       headerTime.title       = '';
     } else if (showRemaining) {
-      headerTime.textContent = '· ' + formatShortTime(cdRemaining);
+      headerTime.textContent = `· ${formatShortTime(cdRemaining)}`;
       headerTime.className   = 'running';
       headerTime.title       = 'Ver hora fin';
     } else {
-      headerTime.textContent = '· ' + formatEndTime();
+      headerTime.textContent = `· ${formatEndTime()}`;
       headerTime.className   = 'endtime';
       headerTime.title       = 'Ver tiempo restante';
     }
@@ -217,15 +211,11 @@ function render() {
   if (isExpanded) {
     setupPanel.hidden   = cdState !== CD.IDLE;
     runningPanel.hidden = cdState === CD.IDLE;
-
-    // El título ya aparece en el header; nunca duplicarlo dentro del panel
-    titleDisplay.hidden = true;
+    titleDisplay.hidden = true; // el título ya aparece en el header
 
     if (cdState === CD.IDLE) {
-      // Botones de modo activo/inactivo
       modeTimeBtnEl.className = cdMode === 'time'     ? 'active' : '';
       modeDurBtnEl.className  = cdMode === 'duration' ? 'active' : '';
-      // Ajustar label y step según el modo
       if (cdMode === 'time') {
         targetInput.step        = '60';
         timeLabelEl.textContent = '¿Hasta qué hora?';
@@ -236,22 +226,17 @@ function render() {
     }
 
     if (cdState !== CD.IDLE) {
-      // El timer muestra el valor congelado si está pausado, el en-vivo si corre
-      const displaySeconds    = cdState === CD.PAUSED ? cdPausedRemaining : cdRemaining;
-      timerEl.textContent     = formatShortTime(displaySeconds);
-      timerEl.className       = cdState === CD.RUNNING ? 'running'
-                              : cdState === CD.PAUSED  ? 'paused'
-                              :                          'done';
+      const displaySeconds = cdState === CD.PAUSED ? cdPausedRemaining : cdRemaining;
+      timerEl.textContent  = formatShortTime(displaySeconds);
+      timerEl.className    = cdState === CD.RUNNING ? 'running'
+                           : cdState === CD.PAUSED  ? 'paused'
+                           :                          'done';
 
-      // El botón de acción cambia según el estado
-      cancelBtn.textContent   = cdState === CD.RUNNING ? '⏸ Pausar'
-                              : cdState === CD.PAUSED  ? '▶ Reanudar'
-                              :                          '↺ Reiniciar';
+      cancelBtn.textContent = cdState === CD.RUNNING ? '⏸ Pausar'
+                            : cdState === CD.PAUSED  ? '▶ Reanudar'
+                            :                          '↺ Reiniciar';
 
-      // El botón de eliminar en el panel solo aparece cuando la cuenta ha terminado
       doneDeleteBtn.hidden    = cdState !== CD.DONE;
-
-      // La hora de fin solo tiene sentido mientras corre (no cuando está pausado o terminado)
       endTimeLabelEl.hidden      = cdState !== CD.RUNNING;
       endTimeLabelEl.textContent = cdState === CD.RUNNING ? formatEndTime() : '';
     } else {
@@ -327,13 +312,13 @@ function resumeCountdown() {
   render();
 }
 
-// Cancela la cuenta y vuelve a IDLE, conservando el título e input para reiniciar fácilmente
+// Cancela la cuenta y vuelve a IDLE, conservando título e input para reiniciar fácilmente
 function resetCountdown() {
   clearTimeout(cdInterval);
-  cdInterval        = null;
-  cdState           = CD.IDLE;
-  cdRemaining       = 0;
-  cdPausedRemaining = 0;
+  cdInterval          = null;
+  cdState             = CD.IDLE;
+  cdRemaining         = 0;
+  cdPausedRemaining   = 0;
   tomorrowNote.hidden = true;
   render();
 }
@@ -357,8 +342,6 @@ function clearCountdown() {
 // Elimina el widget por completo: borra sus datos y avisa al iframe padre
 function deleteCountdown() {
   if (cdInterval) clearTimeout(cdInterval);
-  // Object.values(LS) incluye todas las claves, así que añadir una nueva clave al objeto LS
-  // es suficiente para que deleteCountdown() la limpie automáticamente
   Object.values(LS).forEach(k => localStorage.removeItem(k));
   window.parent.postMessage({ type: 'countdown-remove', id: COUNTDOWN_ID }, '*');
 }
@@ -380,10 +363,10 @@ headerTime.addEventListener('click', e => {
 // Cambio a modo hora fin: guarda el input de duración, restaura el de hora fin
 modeTimeBtnEl.addEventListener('click', () => {
   if (cdMode === 'time') return;
-  durInputVal       = targetInput.value;
-  cdMode            = 'time';
-  targetInput.step  = '60'; // step debe ir antes que value
-  targetInput.value = timeInputVal;
+  durInputVal         = targetInput.value;
+  cdMode              = 'time';
+  targetInput.step    = '60'; // step debe ir antes que value
+  targetInput.value   = timeInputVal;
   tomorrowNote.hidden = true;
   render();
 });
@@ -391,10 +374,10 @@ modeTimeBtnEl.addEventListener('click', () => {
 // Cambio a modo duración: guarda el input de hora fin, restaura el de duración
 modeDurBtnEl.addEventListener('click', () => {
   if (cdMode === 'duration') return;
-  timeInputVal      = targetInput.value;
-  cdMode            = 'duration';
-  targetInput.step  = '1'; // step debe ir antes que value
-  targetInput.value = durInputVal;
+  timeInputVal        = targetInput.value;
+  cdMode              = 'duration';
+  targetInput.step    = '1'; // step debe ir antes que value
+  targetInput.value   = durInputVal;
   tomorrowNote.hidden = true;
   render();
 });
@@ -402,14 +385,17 @@ modeDurBtnEl.addEventListener('click', () => {
 titleInput.addEventListener('blur',    () => { cdTitle = titleInput.value.trim(); render(); });
 titleInput.addEventListener('keydown', e => { if (e.key === 'Enter') { cdTitle = titleInput.value.trim(); render(); } });
 
-startBtn.addEventListener('click',  startCountdown);
-clearBtn.addEventListener('click',  clearCountdown);
+startBtn.addEventListener('click', startCountdown);
+clearBtn.addEventListener('click', clearCountdown);
 
-// El mismo botón sirve para pausar, reanudar o reiniciar según el estado
+// Botón de acción principal: dispatch table en lugar de cadena if/else
 cancelBtn.addEventListener('click', () => {
-  if      (cdState === CD.RUNNING) pauseCountdown();
-  else if (cdState === CD.PAUSED)  resumeCountdown();
-  else if (cdState === CD.DONE)    resetCountdown();
+  const actions = {
+    [CD.RUNNING]: pauseCountdown,
+    [CD.PAUSED]:  resumeCountdown,
+    [CD.DONE]:    resetCountdown,
+  };
+  actions[cdState]?.();
 });
 
 // Botones de eliminar: en el panel expandido (DONE) y en el header colapsado (DONE)
@@ -417,7 +403,7 @@ deleteBtn.addEventListener('click',           deleteCountdown);
 doneDeleteBtn.addEventListener('click',       deleteCountdown);
 headerDoneDeleteBtn.addEventListener('click', deleteCountdown);
 
-// Preview en tiempo real del "mañana" o de la hora de fin
+// Preview en tiempo real de "mañana" o de la hora de fin
 targetInput.addEventListener('input', () => {
   const val = targetInput.value.trim();
   if (!val) { tomorrowNote.hidden = true; return; }

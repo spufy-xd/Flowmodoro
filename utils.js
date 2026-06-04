@@ -1,5 +1,4 @@
 // ── Utilidades compartidas — cargado por todos los módulos ─────────────────
-// Cada módulo carga este archivo antes de su propio JS.
 
 // ── Formato de tiempo ──────────────────────────────────────────────────────
 
@@ -15,7 +14,6 @@ function formatTime(totalSeconds) {
 }
 
 // MM:SS cuando es menos de una hora, HH:MM:SS en caso contrario
-// Úsalo para mostrar duraciones cortas (descanso, bonus) sin el 00: inicial
 function formatShortTime(totalSeconds) {
   const s = Math.max(0, totalSeconds);
   return s >= 3600 ? formatTime(s) : `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
@@ -38,4 +36,23 @@ function playEndSound(frequency = 880, duration = 0.8) {
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + duration);
   } catch (_) {}
+}
+
+// ── localStorage helpers ───────────────────────────────────────────────────
+// Centralizados aquí para no repetir parseInt / null-checks en cada módulo.
+
+// Lee una clave numérica; devuelve defaultVal si no existe o no es número
+function lsInt(key, defaultVal = 0) {
+  const n = parseInt(localStorage.getItem(key), 10);
+  return isNaN(n) ? defaultVal : n;
+}
+
+// Lee una clave booleana guardada como '1' / '0'
+function lsBool(key) {
+  return localStorage.getItem(key) === '1';
+}
+
+// Lee una clave de texto; devuelve defaultVal si no existe
+function lsStr(key, defaultVal = '') {
+  return localStorage.getItem(key) ?? defaultVal;
 }
