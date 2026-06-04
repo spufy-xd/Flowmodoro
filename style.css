@@ -1,6 +1,11 @@
-/* ── Common base styles ─────────────────────────────────────────────────── */
-/* Shared across all pages (main menu, future modules).                     */
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
+:root {
+  --bg:     #0f0f0f;
+  --text:   #e0e0e0;
+  --accent: #74b3f0;
+}
 
+/* ── Common base styles ─────────────────────────────────────────────────── */
 [hidden] { display: none !important; }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

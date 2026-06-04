@@ -1,24 +1,41 @@
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
+:root {
+  --bg:          #111111;
+  --bg-1:        #141414;
+  --bg-edge:     #1e1e1e;
+  --border:      #232323;
+  --border-2:    #2e2e2e;
+  --text:        #e0e0e0;
+  --text-dim:    #666;
+  --text-muted:  #555;
+  --text-faint:  #444;
+
+  --running:      #f4a261;
+  --running-tint: rgba(244, 162, 97, 0.07);
+  --done:         #e76f51;
+}
+
 /* ── Reset & hidden ─────────────────────────────────────────────────────── */
 [hidden] { display: none !important; }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: #111111;
-  color: #e0e0e0;
+  background: var(--bg);
+  color: var(--text);
   font-family: system-ui, -apple-system, sans-serif;
   user-select: none;
-  border: 1px solid #1e1e1e;
+  border: 1px solid var(--bg-edge);
   border-radius: 10px;
   overflow: hidden;
 }
 
-/* ── Module root ────────────────────────────────────────────────────────── */
+/* ── Module root ─────────────────────────────────────────────────────────── */
 #module {
   display: flex;
   flex-direction: column;
 }
 
-/* ── Collapse header ────────────────────────────────────────────────────── */
+/* ── Collapse header ─────────────────────────────────────────────────────── */
 #header-row {
   display: flex;
   align-items: center;
@@ -32,7 +49,7 @@ body {
   flex: 1;
   background: none;
   border: none;
-  color: #555;
+  color: var(--text-muted);
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.45em;
@@ -42,16 +59,15 @@ body {
   text-align: left;
   transition: color 0.2s;
 }
-#collapse-btn:hover { color: #f4a261; }
+#collapse-btn:hover { color: var(--running); }
 
 #header-label {
   flex: 1;
-  color: #666;
+  color: var(--text-dim);
   transition: color 0.2s;
 }
-#collapse-btn[aria-expanded="true"] #header-label { color: #f4a261; }
-#collapse-btn:hover #header-label                 { color: #f4a261; }
-
+#collapse-btn[aria-expanded="true"] #header-label { color: var(--running); }
+#collapse-btn:hover #header-label                 { color: var(--running); }
 
 #collapse-arrow {
   font-size: 0.45rem;
@@ -69,12 +85,12 @@ body {
   transition: opacity 0.15s;
 }
 #header-time:hover   { opacity: 0.7; }
-#header-time.running { color: #f4a261; }
-#header-time.paused  { color: #f4a261; opacity: 0.45; }
-#header-time.done    { color: #e76f51; }
+#header-time.running { color: var(--running); }
+#header-time.paused  { color: var(--running); opacity: 0.45; }
+#header-time.done    { color: var(--done); }
 #header-time.endtime { color: #c88848; letter-spacing: 0.04em; }
 
-/* ── Content area ───────────────────────────────────────────────────────── */
+/* ── Content area ────────────────────────────────────────────────────────── */
 #module-content {
   display: flex;
   flex-direction: column;
@@ -83,7 +99,7 @@ body {
   padding: 0.5rem 1.5rem 2rem;
 }
 
-/* ── Setup panel ────────────────────────────────────────────────────────── */
+/* ── Setup panel ─────────────────────────────────────────────────────────── */
 #setup {
   display: flex;
   flex-direction: column;
@@ -95,16 +111,16 @@ body {
 
 #title-input {
   width: 100%;
-  background: #141414;
-  border: 1px solid #232323;
-  border-radius: 5px;
-  color: #e0e0e0;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
   font-size: 0.85rem;
   padding: 0.5rem 0.75rem;
   text-align: center;
   transition: border-color 0.2s;
 }
-#title-input::placeholder { color: #666; }
+#title-input::placeholder { color: var(--text-dim); }
 #title-input:focus { outline: none; border-color: #3a3a3a; }
 
 #time-row {
@@ -112,11 +128,11 @@ body {
   align-items: center;
   gap: 0.75rem;
   font-size: 0.75rem;
-  color: #666;
+  color: var(--text-dim);
   letter-spacing: 0.06em;
 }
 
-/* ── Mode toggle ────────────────────────────────────────────────────────── */
+/* ── Mode toggle ─────────────────────────────────────────────────────────── */
 #mode-toggle {
   display: flex;
   gap: 0.4rem;
@@ -126,29 +142,29 @@ body {
   background: none;
   border: 1px solid #222;
   border-radius: 99px;
-  color: #444;
+  color: var(--text-faint);
   font-size: 0.6rem;
   font-family: inherit;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 0.3rem 0.8rem;
+  padding: 0.3rem 0.85rem;
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s;
 }
 #mode-toggle button:hover:not(.active) {
   border-color: #333;
-  color: #666;
+  color: var(--text-dim);
 }
 #mode-toggle button.active {
-  border-color: #f4a261;
-  color: #f4a261;
+  border-color: var(--running);
+  color: var(--running);
 }
 
 #target-input {
-  background: #141414;
-  border: 1px solid #232323;
-  border-radius: 5px;
-  color: #e0e0e0;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
   font-size: 0.9rem;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 100;
@@ -160,12 +176,12 @@ body {
 
 #tomorrow-note {
   font-size: 0.7rem;
-  color: #f4a261;
+  color: var(--running);
   letter-spacing: 0.08em;
   opacity: 0.85;
 }
 
-/* ── Button row ─────────────────────────────────────────────────────────── */
+/* ── Button row ──────────────────────────────────────────────────────────── */
 #btn-row {
   display: flex;
   align-items: center;
@@ -176,14 +192,14 @@ body {
 
 #clear-btn, #delete-btn {
   background: none;
-  border: 1px solid #666;
-  border-radius: 2px;
+  border: 1px solid #333;
+  border-radius: 6px;
   cursor: pointer;
   padding: 0.52rem 0.7rem;
   font-size: 0.7rem;
   line-height: 1;
   transition: border-color 0.2s, color 0.2s, transform 0.15s;
-  color: #363636;
+  color: #3a3a3a;
 }
 #clear-btn:hover {
   border-color: #4a4a4a;
@@ -198,26 +214,26 @@ body {
 }
 #delete-btn:hover {
   border-color: #a32e2e;
-  color: #e76f51;
+  color: var(--done);
   transform: translateY(-1px);
 }
 #delete-btn:active { transform: translateY(0) scale(0.98); }
 
-/* ── Start button ───────────────────────────────────────────────────────── */
+/* ── Start button ────────────────────────────────────────────────────────── */
 #start-btn {
-  padding: 0.6rem 2rem;
+  padding: 0.62rem 2rem;
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  border: 1px solid #f4a261;
-  border-radius: 2px;
+  border: 1px solid var(--running);
+  border-radius: 6px;
   background: transparent;
-  color: #f4a261;
+  color: var(--running);
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s, box-shadow 0.2s;
 }
 #start-btn::after {
   content: '';
@@ -229,11 +245,15 @@ body {
   transform-origin: left;
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s;
 }
-#start-btn:hover::after  { transform: scaleX(1); opacity: 0.07; }
-#start-btn:hover         { transform: translateY(-1px); }
-#start-btn:active        { transform: translateY(0) scale(0.98); }
+#start-btn:hover::after { transform: scaleX(1); opacity: 0.07; }
+#start-btn:hover {
+  background: var(--running-tint);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+#start-btn:active { transform: translateY(0) scale(0.98); box-shadow: none; }
 
-/* ── Running panel ──────────────────────────────────────────────────────── */
+/* ── Running panel ───────────────────────────────────────────────────────── */
 #running {
   display: flex;
   flex-direction: column;
@@ -246,7 +266,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.4em;
   text-transform: uppercase;
-  color: #4a4a4a;
+  color: var(--text-faint);
   min-height: 1em;
 }
 
@@ -257,25 +277,36 @@ body {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   line-height: 1;
-  transition: color 0.6s ease, text-shadow 0.6s ease;
+  transition: color 0.6s ease, text-shadow 0.6s ease, opacity 0.6s ease;
 }
-#timer.running { color: #f4a261; text-shadow: 0 0 60px rgba(244,162,97,0.15); }
-#timer.paused  { color: #f4a261; opacity: 0.4; text-shadow: none; }
-#timer.done    { color: #e76f51; text-shadow: 0 0 60px rgba(231,111,81,0.2); }
+#timer.running {
+  color: var(--running);
+  text-shadow: 0 0 50px rgba(244, 162, 97, 0.2);
+  opacity: 1;
+}
+#timer.paused {
+  color: var(--running);
+  opacity: 0.38;
+  text-shadow: none;
+}
+#timer.done {
+  color: var(--done);
+  text-shadow: 0 0 50px rgba(231, 111, 81, 0.2);
+  opacity: 1;
+}
 
-
-/* ── End time label ─────────────────────────────────────────────────────── */
+/* ── End time label ──────────────────────────────────────────────────────── */
 #end-time-label {
   font-family: 'JetBrains Mono', monospace;
   font-weight: 100;
   font-size: 0.65rem;
-  color: #666;
+  color: var(--text-dim);
   letter-spacing: 0.06em;
   text-align: center;
   max-width: 5rem;
 }
 
-/* ── Fila de botones del panel running ──────────────────────────────────── */
+/* ── Running button row ──────────────────────────────────────────────────── */
 #running-btn-row {
   display: flex;
   align-items: center;
@@ -283,46 +314,46 @@ body {
   margin-top: 0.25rem;
 }
 
-/* ── Botón pausar / reanudar / reiniciar ────────────────────────────────── */
+/* ── Pausar / Reanudar / Reiniciar ───────────────────────────────────────── */
 #cancel-btn {
   padding: 0.55rem 1.75rem;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  border: 1px solid #2e2e2e;
-  border-radius: 2px;
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
   background: transparent;
-  color: #666;
+  color: var(--text-dim);
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s, transform 0.15s;
 }
 #cancel-btn:hover  { border-color: #555; color: #999; transform: translateY(-1px); }
 #cancel-btn:active { transform: translateY(0) scale(0.98); }
 
-/* ── Botón eliminar en el panel running (solo visible en estado DONE) ────── */
+/* ── Eliminar en panel running (DONE) ────────────────────────────────────── */
 #done-delete-btn {
   padding: 0.55rem 1rem;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   border: 1px solid #482020;
-  border-radius: 2px;
+  border-radius: 6px;
   background: transparent;
   color: #5a2020;
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s, transform 0.15s;
 }
-#done-delete-btn:hover  { border-color: #a32e2e; color: #e76f51; transform: translateY(-1px); }
+#done-delete-btn:hover  { border-color: #a32e2e; color: var(--done); transform: translateY(-1px); }
 #done-delete-btn:active { transform: translateY(0) scale(0.98); }
 
-/* ── Botón eliminar en el header colapsado (solo visible cuando DONE) ────── */
+/* ── Eliminar en header colapsado (DONE) ─────────────────────────────────── */
 #header-done-delete-btn {
   flex-shrink: 0;
   background: none;
   border: 1px solid #482020;
-  border-radius: 2px;
+  border-radius: 4px;
   color: #5a2020;
   cursor: pointer;
   font-size: 0.65rem;
@@ -331,5 +362,4 @@ body {
   margin-right: 0.6rem;
   transition: border-color 0.2s, color 0.2s;
 }
-#header-done-delete-btn:hover { border-color: #a32e2e; color: #e76f51; }
-
+#header-done-delete-btn:hover { border-color: #a32e2e; color: var(--done); }
