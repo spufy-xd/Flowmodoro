@@ -11,7 +11,7 @@ Documento de referencia para pruebas y contexto. Cubre todo el comportamiento es
 | Estado | Timer muestra | Botón principal |
 |---|---|---|
 | IDLE | Tiempo de la última sesión (o 00:00:00) | ▶ Iniciar |
-| WORKING | Tiempo trabajado (cuenta hacia arriba) | ⏹ Parar |
+| WORKING | Tiempo trabajado (cuenta hacia arriba) | ⏸ Pausar |
 | BREAK_EARNED | Tiempo de descanso ganado | ▶ Iniciar descanso |
 | BREAK | Tiempo de descanso restante (cuenta atrás) | ⏭ Saltar descanso |
 
