@@ -590,6 +590,47 @@ body {
   color: var(--danger);
 }
 
+/* ── Session summary (IDLE tras Finalizar sesión) ───────────────────────── */
+#session-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 16rem;
+  border: 1px solid var(--bg-edge);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.session-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 2rem;
+  padding: 0.45rem 1rem;
+  border-bottom: 1px solid var(--bg-edge);
+  font-family: 'Syne', system-ui, sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+}
+.session-summary-row:last-child { border-bottom: none; }
+.session-summary-label { color: var(--text-dim); }
+.session-summary-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 200;
+}
+.session-summary-val--work      { color: var(--working); }
+.session-summary-val--earned    { color: var(--earned); }
+.session-summary-val--break     { color: var(--breaking); }
+.session-summary-val--pause     { color: var(--text-dim); }
+.session-summary-val--interrupt { color: var(--danger); }
+
+/* ── btn2 state variants ─────────────────────────────────────────────────── */
+#btn2.finish-session       { color: rgba(224, 108, 108, 0.55); border-color: rgba(224, 108, 108, 0.35); }
+#btn2.finish-session:hover { color: var(--danger); border-color: var(--danger); }
+
+#btn2.resume-session       { color: var(--working); border-color: var(--working); }
+#btn2.resume-session:hover { background: var(--working-tint); }
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   body { gap: clamp(1rem, 4vh, 1.75rem); padding: 1.5rem 1rem; }

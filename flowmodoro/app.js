@@ -1,16 +1,23 @@
 // ── Máquina de estados ─────────────────────────────────────────────────────
 const STATE = {
-  IDLE:         'IDLE',
-  WORKING:      'WORKING',
-  PAUSE: 'PAUSE',
-  BREAK:        'BREAK',
-  INTERRUPTED:  'INTERRUPTED', // trabajo pausado por evento externo (F3)
+  IDLE:        'IDLE',
+  WORKING:     'WORKING',
+  PAUSE:       'PAUSE',
+  BREAK:       'BREAK',
+  INTERRUPTED: 'INTERRUPTED',
 };
 
 // ── Historial ──────────────────────────────────────────────────────────────
-const LS_HISTORY       = 'fm_sessions';          // array JSON de entradas históricas
-const LS_CURRENT_ENTRY = 'fm_current_entry_id';  // id de la entrada activa (para actualizar con pausas)
-const DATE_LOCALE      = 'sv-SE';                // locale para fechas YYYY-MM-DD
+const LS_HISTORY        = 'fm_sessions';
+const LS_ACTIVE_SESSION = 'fm_active_session'; // sesión en construcción
+const DATE_LOCALE       = 'sv-SE';
+
+// ── Clases CSS — resumen de sesión (colores por categoría) ─────────────────
+const CSS_VAL_WORK      = 'session-summary-val--work';
+const CSS_VAL_EARNED    = 'session-summary-val--earned';
+const CSS_VAL_BREAK     = 'session-summary-val--break';
+const CSS_VAL_PAUSE     = 'session-summary-val--pause';
+const CSS_VAL_INTERRUPT = 'session-summary-val--interrupt';
 
 // ── Claves de localStorage — configuración ─────────────────────────────────
 const LS_CFG = {
@@ -25,19 +32,19 @@ const LS_CFG = {
 // Todo lo que se borra al hacer reset. Añadir variable nueva:
 //   1. Añadir clave aquí  2. Guardar en saveSession()  3. Restaurar en restoreSession()
 const LS = {
-  state:            'flowmodoro_state',
-  accumulatedBreak: 'flowmodoro_accumulated',
-  workSeconds:      'flowmodoro_work_seconds',
-  segmentStart:     'flowmodoro_work_seconds_base',
-  workStartTime:    'flowmodoro_work_start_time',
-  pauseEarned:      'flowmodoro_pause_earned',
-  bonusEarned:      'flowmodoro_bonus_earned',
-  breakSeconds:     'flowmodoro_break_seconds',
-  breakRemaining:   'flowmodoro_break_remaining',
-  breakDuration:    'flowmodoro_break_total',
-  breakStartTime:   'flowmodoro_break_start_time',
-  pauseStart:        'flowmodoro_pause_start', 
-  currentInterruptions: 'flowmodoro_current_interruptions', // JSON array de interrupciones (F3)
+  state:                'flowmodoro_state',
+  accumulatedBreak:     'flowmodoro_accumulated',
+  workSeconds:          'flowmodoro_work_seconds',
+  segmentStart:         'flowmodoro_work_seconds_base',
+  workStartTime:        'flowmodoro_work_start_time',
+  pauseEarned:          'flowmodoro_pause_earned',
+  bonusEarned:          'flowmodoro_bonus_earned',
+  breakSeconds:         'flowmodoro_break_seconds',
+  breakRemaining:       'flowmodoro_break_remaining',
+  breakDuration:        'flowmodoro_break_total',
+  breakStartTime:       'flowmodoro_break_start_time',
+  pauseStart:           'flowmodoro_pause_start',
+  currentInterruptions: 'flowmodoro_current_interruptions',
 };
 
 // ── Configuración ──────────────────────────────────────────────────────────
@@ -66,46 +73,42 @@ let breakRemaining   = 0;
 let accumulatedBreak = 0;
 let intervalId       = null;
 
-// segmentStartSeconds: valor de workSeconds cuando empezó el segmento actual.
-// Doble función:
-//   1. Ancla de reloj de pared — evita drift del setInterval o throttling del browser.
-//   2. Base del bonus — "Continuar →" resetea el bonus avanzando este valor.
+// segmentStartSeconds: ancla de reloj de pared + base del bonus. No separar.
 let segmentStartSeconds = 0;
-
-// Anclas de reloj de pared para BREAK (mismo patrón que segmentStartSeconds).
-let workStartTime    = null; // Date.now() cuando arrancó el intervalo de trabajo
-let breakStartTime   = null; // Date.now() cuando arrancó el countdown de descanso
-let breakDuration    = 0;    // snapshot de breakSeconds cuando arrancó el countdown
-
-// pauseStartTime: cuándo entramos en PAUSE.
-// Se usa para medir la duración de la pausa (F_PAUSE).
-let pauseStartTime = null;
+let workStartTime       = null;
+let breakStartTime      = null;
+let breakDuration       = 0;
+let pauseStartTime      = null;
 
 // F3 — Interrupciones
-let interruptStartTime   = null; // Date.now() cuando empezó la interrupción actual
-let currentInterruptions = [];   // array de interrupciones de la sesión actual
+let interruptStartTime   = null;
+let currentInterruptions = [];
+
+// Contexto visual de IDLE: 'clean' | 'summary' | 'recovery'
+let idleContext       = 'clean';
+let lastSessionTotals = null;
 
 // ── Referencias al DOM ─────────────────────────────────────────────────────
-const timerEl          = document.getElementById('timer');
-const pauseTimerEl     = document.getElementById('pause-timer');
-const infoEl           = document.getElementById('info');
-const statusEl         = document.getElementById('status');
-const btnEl            = document.getElementById('btn');
-const btn2El           = document.getElementById('btn2');
-const btn3El           = document.getElementById('btn3');
-const btnStartBreakEl  = document.getElementById('btn-start-break');
-const btnInterruptEl   = document.getElementById('btn-interrupt');
-const interruptPanel   = document.getElementById('interrupt-panel');
-const interruptInput   = document.getElementById('interrupt-input');
-const historyPanel     = document.getElementById('history-panel');
-const historyCloseBtn  = document.getElementById('history-close-btn');
-const historyList      = document.getElementById('history-list');
-const historyClearBtn  = document.getElementById('history-clear-btn');
-const historyClearConfirm   = document.getElementById('history-clear-confirm');
-const historyClearYesBtn    = document.getElementById('history-clear-yes-btn');
-const historyClearNoBtn     = document.getElementById('history-clear-no-btn');
+const timerEl             = document.getElementById('timer');
+const pauseTimerEl        = document.getElementById('pause-timer');
+const infoEl              = document.getElementById('info');
+const statusEl            = document.getElementById('status');
+const btnEl               = document.getElementById('btn');
+const btn2El              = document.getElementById('btn2');
+const btn3El              = document.getElementById('btn3');
+const btnStartBreakEl     = document.getElementById('btn-start-break');
+const btnInterruptEl      = document.getElementById('btn-interrupt');
+const interruptPanel      = document.getElementById('interrupt-panel');
+const interruptInput      = document.getElementById('interrupt-input');
+const sessionSummaryEl    = document.getElementById('session-summary');
+const historyPanel        = document.getElementById('history-panel');
+const historyCloseBtn     = document.getElementById('history-close-btn');
+const historyList         = document.getElementById('history-list');
+const historyClearBtn     = document.getElementById('history-clear-btn');
+const historyClearConfirm = document.getElementById('history-clear-confirm');
+const historyClearYesBtn  = document.getElementById('history-clear-yes-btn');
+const historyClearNoBtn   = document.getElementById('history-clear-no-btn');
 
-// M1: el panel de configuración está en el shell. Este iframe solo envía señal al padre.
 // Al cargar, notificamos al shell que actualice sus inputs con los valores actuales.
 window.parent.postMessage({ type: 'cfg-loaded' }, '*');
 
@@ -115,60 +118,152 @@ const calcBonusEarned = (segmentSeconds) => {
   return Math.floor(segmentSeconds / (cfg.bonusTarget * 60)) * (cfg.bonusMinutes * 60);
 };
 
-// ── Historial de sesiones (F2) ─────────────────────────────────────────────
+// ── Sesión activa (fm_active_session) ──────────────────────────────────────
 
-// Guarda una entrada en fm_sessions. Solo si workSeconds >= 60.
-// Llamado en stopWork() justo antes de cambiar estado.
-function saveHistoryEntry() {
+// Guarda el bloque de trabajo actual en fm_active_session. Solo si workSeconds >= 60.
+function saveBlockToSession() {
   if (workSeconds < 60) return;
+  const raw = localStorage.getItem(LS_ACTIVE_SESSION);
+  if (!raw) return;
 
   const segmentSeconds = workSeconds - segmentStartSeconds;
   const bonusCycles    = cfg.bonusMinutes === 0 ? 0
     : Math.floor(segmentSeconds / (cfg.bonusTarget * 60));
 
-  const now   = Date.now();
-  const today = new Date(now).toLocaleDateString(DATE_LOCALE); // YYYY-MM-DD
-
-  const entry = {
-    id:                   String(workStartTime || now),
-    date:                 today,
-    startTs:              workStartTime || now,
-    endTs:                now,
+  const block = {
     workSeconds,
     pauseEarned,
     bonusEarned,
     bonusCyclesCompleted: bonusCycles,
-    accumulatedBreak,
-    totalBreak:           breakSeconds,
     pauseSeconds:         0,
     pauses:               [],
-    interruptions:        currentInterruptions.slice(), // copia las interrupciones del segmento actual
-    task:                 null,
+    interruptions:        currentInterruptions.slice(),
   };
 
-  const sessions = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
-  sessions.push(entry);
-  if (sessions.length > 500) sessions.shift();
-  localStorage.setItem(LS_HISTORY, JSON.stringify(sessions));
-  localStorage.setItem(LS_CURRENT_ENTRY, entry.id);
-}
-
-// Actualiza la última entrada guardada añadiendo datos de pausa (F_PAUSE).
-function updateLastEntryWithPause(pause) {
-  const entryId = localStorage.getItem(LS_CURRENT_ENTRY);
-  if (!entryId) return;
   try {
-    const sessions = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
-    const idx = sessions.findIndex(s => s.id === entryId);
-    if (idx === -1) return;
-    sessions[idx].pauses.push(pause);
-    sessions[idx].pauseSeconds = sessions[idx].pauses
-      .reduce((sum, p) => sum + p.durationSeconds, 0);
-    localStorage.setItem(LS_HISTORY, JSON.stringify(sessions));
+    const session = JSON.parse(raw);
+    session.blocks.push(block);
+    localStorage.setItem(LS_ACTIVE_SESSION, JSON.stringify(session));
   } catch (_) {}
 }
 
-// ── Historial — panel de UI ────────────────────────────────────────────────
+// Añade datos de pausa al último bloque de fm_active_session.
+function updateLastBlockWithPause(pause) {
+  const raw = localStorage.getItem(LS_ACTIVE_SESSION);
+  if (!raw) return;
+  try {
+    const session = JSON.parse(raw);
+    if (!session.blocks.length) return;
+    const last = session.blocks[session.blocks.length - 1];
+    last.pauses.push(pause);
+    last.pauseSeconds = last.pauses.reduce((s, p) => s + p.durationSeconds, 0);
+    localStorage.setItem(LS_ACTIVE_SESSION, JSON.stringify(session));
+  } catch (_) {}
+}
+
+// Acumula descanso realmente tomado en fm_active_session.
+function updateActiveSessionBreakTaken(seconds) {
+  if (seconds <= 0) return;
+  const raw = localStorage.getItem(LS_ACTIVE_SESSION);
+  if (!raw) return;
+  try {
+    const session = JSON.parse(raw);
+    session.breakTakenSeconds = (session.breakTakenSeconds || 0) + seconds;
+    session.breaksCount       = (session.breaksCount       || 0) + 1;
+    localStorage.setItem(LS_ACTIVE_SESSION, JSON.stringify(session));
+  } catch (_) {}
+}
+
+// Calcula los totales de una sesión a partir de sus bloques.
+function computeTotalsFromSession(session) {
+  const blocks        = session.blocks || [];
+  const allInterrupts = blocks.flatMap(b => b.interruptions || []);
+  return {
+    workSeconds:         blocks.reduce((s, b) => s + b.workSeconds, 0),
+    maxBlockSeconds:     blocks.length ? Math.max(...blocks.map(b => b.workSeconds)) : 0,
+    blocksCount:         blocks.length,
+    breakEarnedSeconds:  blocks.reduce((s, b) => s + (b.pauseEarned || 0) + (b.bonusEarned || 0), 0),
+    breakSeconds:        session.breakTakenSeconds || 0,
+    breaksCount:         session.breaksCount       || 0,
+    pauseSeconds:        blocks.reduce((s, b) => s + (b.pauseSeconds || 0), 0),
+    pauseCount:          blocks.reduce((s, b) => s + (b.pauses ? b.pauses.length : 0), 0),
+    interruptionCount:   allInterrupts.length,
+    interruptionSeconds: allInterrupts.reduce((s, i) => s + (i.durationSeconds || 0), 0),
+  };
+}
+
+// Guarda la sesión parcial con closedCleanly:false y elimina fm_active_session.
+function discardPartialSession() {
+  const raw = localStorage.getItem(LS_ACTIVE_SESSION);
+  if (!raw) return;
+  try {
+    const session = JSON.parse(raw);
+    if (session.blocks && session.blocks.length > 0) {
+      const completed = {
+        ...session,
+        endTs:         Date.now(),
+        closedCleanly: false,
+        totals:        computeTotalsFromSession(session),
+      };
+      const sessions = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
+      sessions.push(completed);
+      if (sessions.length > 500) sessions.shift();
+      localStorage.setItem(LS_HISTORY, JSON.stringify(sessions));
+    }
+  } catch (_) {}
+  localStorage.removeItem(LS_ACTIVE_SESSION);
+}
+
+// Cierra la sesión correctamente: calcula totales, guarda, transiciona a IDLE con resumen.
+function finishSession() {
+  recordPauseIfNeeded();
+
+  const raw = localStorage.getItem(LS_ACTIVE_SESSION);
+  if (raw) {
+    try {
+      const session = JSON.parse(raw);
+      if (session.blocks && session.blocks.length > 0) {
+        const totals    = computeTotalsFromSession(session);
+        const completed = { ...session, endTs: Date.now(), closedCleanly: true, totals };
+        const sessions  = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
+        sessions.push(completed);
+        if (sessions.length > 500) sessions.shift();
+        localStorage.setItem(LS_HISTORY, JSON.stringify(sessions));
+        lastSessionTotals = totals;
+      }
+    } catch (_) {}
+    localStorage.removeItem(LS_ACTIVE_SESSION);
+  }
+
+  clearInterval(intervalId);
+  intervalId           = null;
+  workSeconds          = 0;
+  segmentStartSeconds  = 0;
+  pauseEarned          = 0;
+  bonusEarned          = 0;
+  breakSeconds         = 0;
+  breakRemaining       = 0;
+  breakDuration        = 0;
+  workStartTime        = null;
+  breakStartTime       = null;
+  pauseStartTime       = null;
+  accumulatedBreak     = 0;
+  currentInterruptions = [];
+  Object.values(LS).forEach(k => localStorage.removeItem(k));
+
+  idleContext = lastSessionTotals ? 'summary' : 'clean';
+  state       = STATE.IDLE;
+  render();
+}
+
+// Restaura la sesión tras un cierre inesperado.
+function resumeSession() {
+  idleContext = 'clean';
+  restoreSession();
+  render();
+}
+
+// ── Historial — panel de UI (F2) ───────────────────────────────────────────
 
 function openHistoryPanel() {
   renderHistoryList();
@@ -177,7 +272,7 @@ function openHistoryPanel() {
 }
 
 function closeHistoryPanel() {
-  historyPanel.hidden = true;
+  historyPanel.hidden        = true;
   historyClearConfirm.hidden = true;
   historyClearBtn.hidden     = false;
   window.parent.postMessage({ type: 'history-close' }, '*');
@@ -191,13 +286,10 @@ function renderHistoryList() {
     return;
   }
 
-  // Últimas 30 entradas, más recientes primero
-  const recent = sessions.slice(-30).reverse();
-
+  const recent    = sessions.slice(-30).reverse();
   const today     = new Date().toLocaleDateString(DATE_LOCALE);
   const yesterday = new Date(Date.now() - 86400000).toLocaleDateString(DATE_LOCALE);
 
-  // Agrupar por día
   const groupedByDay = {};
   recent.forEach(entry => {
     if (!groupedByDay[entry.date]) groupedByDay[entry.date] = [];
@@ -208,22 +300,27 @@ function renderHistoryList() {
   Object.keys(groupedByDay).forEach(date => {
     const dayLabel = date === today     ? 'Hoy'
                    : date === yesterday ? 'Ayer'
-                   : date.split('-').slice(1).reverse().join('/'); // MM-DD → DD/MM
+                   : date.split('-').slice(1).reverse().join('/');
 
     html += `<div class="history-day"><span class="history-day-label">${dayLabel}</span>`;
 
     groupedByDay[date].forEach(entry => {
+      // Soporta estructura nueva (con totals) y estructura antigua (plana)
+      const ws = entry.totals ? entry.totals.workSeconds  : (entry.workSeconds || 0);
+      const bs = entry.totals ? entry.totals.breakSeconds : (entry.totalBreak  || 0);
+      const ic = entry.totals ? entry.totals.interruptionCount
+               : (entry.interruptions ? entry.interruptions.length : 0);
+      const ps = entry.totals ? entry.totals.pauseSeconds : (entry.pauseSeconds || 0);
+
       const startTime = new Date(entry.startTs);
       const timeStr   = `${pad(startTime.getHours())}:${pad(startTime.getMinutes())}`;
-      const workStr   = formatShortTime(entry.workSeconds);
-      const breakStr  = formatShortTime(entry.totalBreak);
-
-      const interruptCount = entry.interruptions ? entry.interruptions.length : 0;
-      const pauseSecs      = entry.pauseSeconds  || 0;
+      const workStr   = formatShortTime(ws);
+      const breakStr  = formatShortTime(bs);
 
       const details = [];
-      if (interruptCount > 0) details.push(`${interruptCount} interrupción${interruptCount !== 1 ? 'es' : ''}`);
-      if (pauseSecs      > 0) details.push(`${formatShortTime(pauseSecs)} en pausa`);
+      if (entry.closedCleanly === false) details.push('incompleta');
+      if (ic > 0) details.push(`${ic} interrupción${ic !== 1 ? 'es' : ''}`);
+      if (ps > 0) details.push(`${formatShortTime(ps)} en pausa`);
 
       html += `
         <div class="history-entry">
@@ -232,7 +329,6 @@ function renderHistoryList() {
             <span class="history-work">${workStr} trabajo</span>
             <span class="history-break">${breakStr} descanso</span>
           </div>
-          ${entry.task ? `<div class="history-task">${entry.task}</div>` : ''}
           ${details.length ? `<div class="history-details">${details.join(' · ')}</div>` : ''}
         </div>`;
     });
@@ -245,24 +341,24 @@ function renderHistoryList() {
 
 // ── Persistencia de sesión ─────────────────────────────────────────────────
 function saveSession() {
-  localStorage.setItem(LS.state,            state);
-  localStorage.setItem(LS.accumulatedBreak, accumulatedBreak);
-  localStorage.setItem(LS.workSeconds,      workSeconds);
-  localStorage.setItem(LS.segmentStart,     segmentStartSeconds);
-  localStorage.setItem(LS.workStartTime,    workStartTime  ?? '');
-  localStorage.setItem(LS.pauseEarned,      pauseEarned);
-  localStorage.setItem(LS.bonusEarned,      bonusEarned);
-  localStorage.setItem(LS.breakSeconds,     breakSeconds);
-  localStorage.setItem(LS.breakRemaining,   breakRemaining);
-  localStorage.setItem(LS.breakDuration,    breakDuration);
-  localStorage.setItem(LS.breakStartTime,   breakStartTime   ?? '');
-  localStorage.setItem(LS.pauseStart,     pauseStartTime ?? '');
+  localStorage.setItem(LS.state,                state);
+  localStorage.setItem(LS.accumulatedBreak,     accumulatedBreak);
+  localStorage.setItem(LS.workSeconds,          workSeconds);
+  localStorage.setItem(LS.segmentStart,         segmentStartSeconds);
+  localStorage.setItem(LS.workStartTime,        workStartTime  ?? '');
+  localStorage.setItem(LS.pauseEarned,          pauseEarned);
+  localStorage.setItem(LS.bonusEarned,          bonusEarned);
+  localStorage.setItem(LS.breakSeconds,         breakSeconds);
+  localStorage.setItem(LS.breakRemaining,       breakRemaining);
+  localStorage.setItem(LS.breakDuration,        breakDuration);
+  localStorage.setItem(LS.breakStartTime,       breakStartTime  ?? '');
+  localStorage.setItem(LS.pauseStart,           pauseStartTime  ?? '');
   localStorage.setItem(LS.currentInterruptions, JSON.stringify(currentInterruptions));
 }
 
 function restoreSession() {
   const savedState = localStorage.getItem(LS.state);
-  if (!savedState) return; // primera vez
+  if (!savedState) return;
 
   accumulatedBreak    = lsInt(LS.accumulatedBreak);
   segmentStartSeconds = lsInt(LS.segmentStart);
@@ -275,7 +371,7 @@ function restoreSession() {
 
   const savedWorkStart  = lsInt(LS.workStartTime);
   const savedBreakStart = lsInt(LS.breakStartTime);
-  const savedBeStart    = localStorage.getItem(LS.pauseStart);
+  const savedPauseStart = localStorage.getItem(LS.pauseStart);
 
   try {
     currentInterruptions = JSON.parse(localStorage.getItem(LS.currentInterruptions) || '[]');
@@ -285,23 +381,21 @@ function restoreSession() {
     // INTERRUPTED se restaura como PAUSE: el trabajo se considera parado
     if (savedWorkStart) {
       workStartTime = savedWorkStart;
-      // Para INTERRUPTED, workSeconds está congelado (no avanza durante la interrupción)
       if (savedState === STATE.WORKING) {
         workSeconds = segmentStartSeconds + Math.floor((Date.now() - workStartTime) / 1000);
       }
-      // savedState === INTERRUPTED: workSeconds ya tiene el valor congelado, no se actualiza
     }
-    pauseEarned  = Math.floor(workSeconds * cfg.breakRatio / cfg.ratio);
-    bonusEarned  = calcBonusEarned(workSeconds - segmentStartSeconds);
-    breakSeconds = pauseEarned + bonusEarned + accumulatedBreak;
-    state        = STATE.PAUSE;
+    pauseEarned    = Math.floor(workSeconds * cfg.breakRatio / cfg.ratio);
+    bonusEarned    = calcBonusEarned(workSeconds - segmentStartSeconds);
+    breakSeconds   = pauseEarned + bonusEarned + accumulatedBreak;
+    state          = STATE.PAUSE;
     pauseStartTime = Date.now();
-    intervalId   = setInterval(tick, 1000);
+    intervalId     = setInterval(tick, 1000);
 
   } else if (savedState === STATE.PAUSE) {
-    state = STATE.PAUSE;
-    pauseStartTime = savedBeStart ? parseInt(savedBeStart, 10) : Date.now();
-    intervalId = setInterval(tick, 1000);
+    state          = STATE.PAUSE;
+    pauseStartTime = savedPauseStart ? parseInt(savedPauseStart, 10) : Date.now();
+    intervalId     = setInterval(tick, 1000);
 
   } else if (savedState === STATE.BREAK) {
     state = STATE.BREAK;
@@ -313,12 +407,12 @@ function restoreSession() {
       breakStartTime = Date.now();
     }
     if (breakRemaining <= 0) {
-      accumulatedBreak     = 0;
-      breakSeconds         = 0;
+      accumulatedBreak = 0;
+      breakSeconds     = 0;
       playEndSound();
-      pauseStartTime = Date.now();
-      state                = STATE.PAUSE;
-      intervalId           = setInterval(tick, 1000);
+      pauseStartTime   = Date.now();
+      state            = STATE.PAUSE;
+      intervalId       = setInterval(tick, 1000);
       return;
     }
     intervalId = setInterval(tick, 1000);
@@ -335,7 +429,7 @@ function render() {
       ? Math.floor((Date.now() - interruptStartTime) / 1000)
       : 0;
 
-    timerEl.textContent      = formatTime(workSeconds); // congelado durante la interrupción
+    timerEl.textContent      = formatTime(workSeconds);
     timerEl.className        = 'interrupted';
     pauseTimerEl.hidden      = false;
     pauseTimerEl.textContent = `⚡ ${formatTime(interruptDur)}`;
@@ -349,86 +443,152 @@ function render() {
     btnStartBreakEl.hidden   = true;
     btnInterruptEl.hidden    = true;
     interruptPanel.hidden    = false;
+    sessionSummaryEl.hidden  = true;
 
   } else if (state === STATE.IDLE) {
-    timerEl.textContent   = formatTime(workSeconds);
-    timerEl.className     = 'idle';
-    pauseTimerEl.hidden   = true;
-    infoEl.textContent    = accumulatedBreak > 0
-      ? `⏳ descanso acumulado: ${formatShortTime(accumulatedBreak)}`
-      : '';
-    statusEl.textContent  = 'listo para empezar';
-    btnEl.textContent       = '▶ Iniciar';
-    btnEl.className         = '';
-    btnEl.hidden            = false;
-    btn2El.hidden           = true;
-    btn3El.hidden           = true;
-    btnStartBreakEl.hidden  = true;
-    btnInterruptEl.hidden   = true;
-    interruptPanel.hidden   = true;
+    pauseTimerEl.hidden    = true;
+    btnStartBreakEl.hidden = true;
+    btnInterruptEl.hidden  = true;
+    interruptPanel.hidden  = true;
+    btn3El.hidden          = true;
+
+    if (idleContext === 'recovery') {
+      timerEl.textContent     = formatTime(0);
+      timerEl.className       = 'idle';
+      infoEl.textContent      = 'La sesión anterior no se cerró correctamente.';
+      statusEl.textContent    = '¿qué quieres hacer?';
+      sessionSummaryEl.hidden = true;
+      btnEl.textContent       = '▶ Nueva sesión';
+      btnEl.className         = '';
+      btnEl.hidden            = false;
+      btn2El.textContent      = '▶ Retomar sesión';
+      btn2El.className        = 'resume-session';
+      btn2El.style.order      = '';
+      btn2El.hidden           = false;
+
+    } else if (idleContext === 'summary') {
+      timerEl.textContent          = formatTime(lastSessionTotals.workSeconds);
+      timerEl.className            = 'idle';
+      infoEl.textContent           = '';
+      statusEl.textContent         = 'sesión completada';
+      sessionSummaryEl.hidden      = false;
+      sessionSummaryEl.innerHTML   = buildSessionSummaryHtml();
+      btnEl.textContent            = '▶ Nueva sesión';
+      btnEl.className              = '';
+      btnEl.hidden                 = false;
+      btn2El.hidden                = true;
+
+    } else {
+      // clean
+      timerEl.textContent     = formatTime(0);
+      timerEl.className       = 'idle';
+      infoEl.textContent      = '';
+      statusEl.textContent    = 'listo para empezar';
+      sessionSummaryEl.hidden = true;
+      btnEl.textContent       = '▶ Nueva sesión';
+      btnEl.className         = '';
+      btnEl.hidden            = false;
+      btn2El.hidden           = true;
+    }
 
   } else if (state === STATE.WORKING) {
-    timerEl.textContent   = formatTime(workSeconds);
-    timerEl.className     = 'working';
-    pauseTimerEl.hidden   = true;
-    infoEl.innerHTML      = buildBonusProgressHtml();
-    statusEl.textContent  = 'trabajando…';
-    btnEl.textContent       = '⏸ Pausar';
-    btnEl.className         = 'stop';
-    btnEl.hidden            = false;
-    btn2El.hidden           = true;
-    btn3El.hidden           = true;
-    btnStartBreakEl.hidden  = false;
-    // Botón ⚡ con contador de interrupciones (F3)
-    btnInterruptEl.hidden       = false;
-    btnInterruptEl.textContent  = currentInterruptions.length > 0
+    timerEl.textContent      = formatTime(workSeconds);
+    timerEl.className        = 'working';
+    pauseTimerEl.hidden      = true;
+    infoEl.innerHTML         = buildBonusProgressHtml();
+    statusEl.textContent     = 'trabajando…';
+    btnEl.textContent        = '⏸ Pausar';
+    btnEl.className          = 'stop';
+    btnEl.hidden             = false;
+    btn2El.hidden            = true;
+    btn3El.hidden            = true;
+    btnStartBreakEl.hidden   = false;
+    btnInterruptEl.hidden    = false;
+    btnInterruptEl.textContent = currentInterruptions.length > 0
       ? `⚡ ${currentInterruptions.length}`
       : '⚡';
-    interruptPanel.hidden = true;
+    interruptPanel.hidden    = true;
+    sessionSummaryEl.hidden  = true;
 
   } else if (state === STATE.PAUSE) {
     const pauseDur = pauseStartTime
       ? Math.floor((Date.now() - pauseStartTime) / 1000)
       : 0;
 
-    timerEl.textContent   = formatTime(breakSeconds);
-    timerEl.className     = 'break-earned';
-    infoEl.innerHTML      = buildPauseInfoHtml(pauseDur);
-    statusEl.innerHTML    = `Trabajado: <strong>${formatTime(workSeconds)}</strong>`;
+    timerEl.textContent      = formatTime(breakSeconds);
+    timerEl.className        = 'break-earned';
+    infoEl.innerHTML         = buildPauseInfoHtml(pauseDur);
+    statusEl.innerHTML       = `Trabajado: <strong>${formatTime(workSeconds)}</strong>`;
 
-    // Timer de pausa visible solo a partir de los 3 minutos
     pauseTimerEl.hidden      = pauseDur < 180;
     pauseTimerEl.textContent = pauseDur >= 180 ? `⏸ ${formatTime(pauseDur)}` : '';
 
-    btnEl.hidden            = breakSeconds === 0; // ocultar si no hay descanso disponible
-    btnEl.textContent       = '▶ Iniciar descanso';
-    btnEl.className         = 'start-break';
-    btn2El.hidden           = true;
-    btn3El.hidden           = false;
-    btn3El.textContent      = 'Continuar →';
-    btnStartBreakEl.hidden  = true;
-    btnInterruptEl.hidden   = true;
-    interruptPanel.hidden   = true;
+    btnEl.hidden             = breakSeconds === 0;
+    btnEl.textContent        = '▶ Iniciar descanso';
+    btnEl.className          = 'start-break';
+    btn2El.hidden            = false;
+    btn2El.textContent       = 'Finalizar sesión';
+    btn2El.className         = 'finish-session';
+    btn2El.style.order       = '-1';
+    btn3El.hidden            = false;
+    btn3El.textContent       = 'Continuar →';
+    btnStartBreakEl.hidden   = true;
+    btnInterruptEl.hidden    = true;
+    interruptPanel.hidden    = true;
+    sessionSummaryEl.hidden  = true;
 
   } else if (state === STATE.BREAK) {
-    timerEl.textContent   = formatTime(breakRemaining);
-    timerEl.className     = 'breaking';
-    pauseTimerEl.hidden   = true;
-    infoEl.innerHTML      = buildBreakInfoHtml();
-    const endTime         = new Date(Date.now() + breakRemaining * 1000);
-    statusEl.textContent  = `descansando… fin a las ${pad(endTime.getHours())}:${pad(endTime.getMinutes())}`;
-    btnEl.textContent       = '⏭ Saltar descanso';
-    btnEl.className         = 'skip-break';
-    btnEl.hidden            = false;
-    btn2El.hidden           = true;
-    btn3El.hidden           = true;
-    btnStartBreakEl.hidden  = true;
-    btnInterruptEl.hidden   = true;
-    interruptPanel.hidden   = true;
+    timerEl.textContent      = formatTime(breakRemaining);
+    timerEl.className        = 'breaking';
+    pauseTimerEl.hidden      = true;
+    infoEl.innerHTML         = buildBreakInfoHtml();
+    const endTime            = new Date(Date.now() + breakRemaining * 1000);
+    statusEl.textContent     = `descansando… fin a las ${pad(endTime.getHours())}:${pad(endTime.getMinutes())}`;
+    btnEl.textContent        = '⏭ Saltar descanso';
+    btnEl.className          = 'skip-break';
+    btnEl.hidden             = false;
+    btn2El.hidden            = true;
+    btn3El.hidden            = true;
+    btnStartBreakEl.hidden   = true;
+    btnInterruptEl.hidden    = true;
+    interruptPanel.hidden    = true;
+    sessionSummaryEl.hidden  = true;
   }
 
   updateTabTitle();
-  saveSession();
+  // En modo recovery no sobreescribimos el estado guardado (lo necesita resumeSession)
+  if (!(state === STATE.IDLE && idleContext === 'recovery')) saveSession();
+}
+
+// HTML del resumen al llegar a IDLE desde "Finalizar sesión"
+function buildSessionSummaryHtml() {
+  if (!lastSessionTotals) return '';
+  const {
+    workSeconds: ws, maxBlockSeconds: mbs, blocksCount: bc,
+    breakEarnedSeconds: bes, breakSeconds: bs, breaksCount: brc,
+    pauseSeconds: ps, pauseCount: pc,
+    interruptionCount: ic, interruptionSeconds: is_,
+  } = lastSessionTotals;
+
+  const rows = [
+    ['Tiempo trabajado',    formatTime(ws),                        CSS_VAL_WORK],
+    ['Bloque más largo',    mbs > 0 ? formatTime(mbs) : '—',      CSS_VAL_WORK],
+    ['Bloques',             String(bc),                            CSS_VAL_WORK],
+    ['Descanso generado',   bes > 0 ? formatShortTime(bes) : '—', CSS_VAL_EARNED],
+    ['Descanso tomado',     bs  > 0 ? formatShortTime(bs)  : '—', CSS_VAL_BREAK],
+    ['Descansos',           String(brc),                           CSS_VAL_BREAK],
+    ['Pausas',              String(pc),                            CSS_VAL_PAUSE],
+    ['Tiempo en pausa',     ps > 0 ? formatShortTime(ps)  : '—',  CSS_VAL_PAUSE],
+    ['Interrupciones',      String(ic),                            CSS_VAL_INTERRUPT],
+    ['Tiempo interrumpido', is_ > 0 ? formatShortTime(is_) : '—', CSS_VAL_INTERRUPT],
+  ];
+
+  return rows.map(([label, val, cls]) =>
+    `<div class="session-summary-row">` +
+    `<span class="session-summary-label">${label}</span>` +
+    `<span class="session-summary-val ${cls}">${val}</span>` +
+    `</div>`
+  ).join('');
 }
 
 // HTML del progreso de bonus mientras se trabaja
@@ -454,7 +614,7 @@ const buildBreakInfoHtml = () => {
   return `Descanso obtenido: <strong>${formatShortTime(pauseEarned)}</strong>${bonusBadge}${carryLine}`;
 };
 
-// HTML para PAUSE incluyendo mensajes de pausa progresivos (F_PAUSE)
+// HTML para PAUSE incluyendo mensajes de pausa progresivos
 function buildPauseInfoHtml(pauseDur) {
   const breakLine = buildBreakInfoHtml();
   if (pauseDur < 60)  return breakLine;
@@ -476,10 +636,10 @@ function reloadCfg() {
 // Actualiza el título de la pestaña. El app corre en un <iframe>, así que
 // document.title solo afecta al iframe; postMessage lo aplica en el padre.
 function updateTabTitle() {
-  const showTime = lsBool(LS_CFG.showInTitle); // lee directamente de LS (panel en shell)
-  const title = showTime && state === STATE.WORKING      ? `▶ ${formatTime(workSeconds)} — Flowmodoro`
-              : showTime && state === STATE.PAUSE ? `⏸ ${formatTime(breakSeconds)} — Flowmodoro`
-              : showTime && state === STATE.BREAK        ? `☕ ${formatTime(breakRemaining)} — Flowmodoro`
+  const showTime = lsBool(LS_CFG.showInTitle);
+  const title = showTime && state === STATE.WORKING ? `▶ ${formatTime(workSeconds)} — Flowmodoro`
+              : showTime && state === STATE.PAUSE    ? `⏸ ${formatTime(breakSeconds)} — Flowmodoro`
+              : showTime && state === STATE.BREAK    ? `☕ ${formatTime(breakRemaining)} — Flowmodoro`
               : 'Flowmodoro';
   document.title = title;
   window.parent.postMessage({ type: 'title-update', title }, '*');
@@ -487,13 +647,13 @@ function updateTabTitle() {
 
 // ── Tick — se llama cada segundo por el setInterval ────────────────────────
 function tick() {
-  if      (state === STATE.WORKING)      updateWorkTimer();
-  else if (state === STATE.BREAK)        updateBreakTimer();
-  else if (state === STATE.PAUSE) render(); // refresca el timer de pausa
-  else if (state === STATE.INTERRUPTED)  render(); // refresca el timer de interrupción
+  if      (state === STATE.WORKING)     updateWorkTimer();
+  else if (state === STATE.BREAK)       updateBreakTimer();
+  else if (state === STATE.PAUSE)       render();
+  else if (state === STATE.INTERRUPTED) render();
 }
 
-// Recalcula workSeconds con reloj de pared (no acumula drift del setInterval)
+// Recalcula workSeconds con reloj de pared
 function updateWorkTimer() {
   workSeconds = segmentStartSeconds + Math.floor((Date.now() - workStartTime) / 1000);
   render();
@@ -503,38 +663,35 @@ function updateWorkTimer() {
 function updateBreakTimer() {
   breakRemaining = Math.max(0, breakDuration - Math.floor((Date.now() - breakStartTime) / 1000));
   if (breakRemaining <= 0) {
+    updateActiveSessionBreakTaken(breakDuration); // descanso completo tomado
     clearInterval(intervalId);
-    intervalId   = null;
+    intervalId       = null;
     accumulatedBreak = 0;
-    breakSeconds = 0; // descanso consumido
+    breakSeconds     = 0;
     playEndSound();
-    // Según spec: el descanso terminado lleva a PAUSE, no a IDLE
-    pauseStartTime = Date.now();
-    state        = STATE.PAUSE;
-    intervalId   = setInterval(tick, 1000);
+    pauseStartTime   = Date.now();
+    state            = STATE.PAUSE;
+    intervalId       = setInterval(tick, 1000);
     render();
   } else {
     render();
   }
 }
 
-// ── Helpers de pausa (F_PAUSE) ─────────────────────────────────────────────
+// ── Helpers de pausa ───────────────────────────────────────────────────────
 
-// Registra la pausa actual si supera 30 segundos, luego limpia pauseStartTime.
-// Llamado al salir de PAUSE hacia startBreak() o continueWork().
+// Registra la pausa actual si supera 30 s, luego limpia pauseStartTime.
 function recordPauseIfNeeded() {
   if (!pauseStartTime) return;
   const dur = Math.floor((Date.now() - pauseStartTime) / 1000);
   if (dur >= 30) {
-    updateLastEntryWithPause({ durationSeconds: dur, startTs: pauseStartTime });
+    updateLastBlockWithPause({ durationSeconds: dur, startTs: pauseStartTime });
   }
   pauseStartTime = null;
 }
 
-// ── Transiciones de estado (F3 — interrupciones) ──────────────────────────
-
+// ── Transiciones — interrupciones (F3) ────────────────────────────────────
 function startInterrupt() {
-  // No se limpia el intervalo: el tick sigue corriendo para el timer de interrupción
   interruptStartTime = Date.now();
   state              = STATE.INTERRUPTED;
   render();
@@ -556,44 +713,57 @@ function resumeFromInterrupt() {
   interruptStartTime   = null;
 
   // Ajusta workStartTime para que el tiempo de interrupción no cuente como trabajo.
-  // La relación workSeconds = segmentStartSeconds + (Date.now() - workStartTime)/1000
-  // debe dar el mismo workSeconds congelado → workStartTime = now - segmentOffset * 1000
   workStartTime = Date.now() - (workSeconds - segmentStartSeconds) * 1000;
-
-  state = STATE.WORKING;
+  state         = STATE.WORKING;
   render();
 }
 
 // ── Transiciones de estado ─────────────────────────────────────────────────
+
+// IDLE → WORKING. Crea una nueva fm_active_session.
 function startWork() {
+  if (idleContext === 'recovery') discardPartialSession();
+
+  const now     = Date.now();
+  const today   = new Date(now).toLocaleDateString(DATE_LOCALE);
+  const session = { id: String(now), date: today, startTs: now, blocks: [], breakTakenSeconds: 0, breaksCount: 0 };
+  localStorage.setItem(LS_ACTIVE_SESSION, JSON.stringify(session));
+
   clearInterval(intervalId);
   workSeconds          = 0;
   segmentStartSeconds  = 0;
   workStartTime        = Date.now();
   breakSeconds         = 0;
-  currentInterruptions = []; // nueva sesión: limpia interrupciones anteriores
+  accumulatedBreak     = 0;
+  pauseEarned          = 0;
+  bonusEarned          = 0;
+  currentInterruptions = [];
+  lastSessionTotals    = null;
+  idleContext          = 'clean';
   state                = STATE.WORKING;
   intervalId           = setInterval(tick, 1000);
   render();
 }
 
+// WORKING → PAUSE
 function stopWork() {
   clearInterval(intervalId);
   intervalId   = null;
   pauseEarned  = Math.floor(workSeconds * cfg.breakRatio / cfg.ratio);
   bonusEarned  = calcBonusEarned(workSeconds - segmentStartSeconds);
   breakSeconds = pauseEarned + bonusEarned + accumulatedBreak;
-  saveHistoryEntry();
-  currentInterruptions = []; // las interrupciones ya se guardaron en la entrada del historial
-  pauseStartTime = Date.now();
-  state        = STATE.PAUSE;
-  intervalId   = setInterval(tick, 1000); // sigue tickeando para medir la pausa
+  saveBlockToSession();
+  currentInterruptions = [];
+  pauseStartTime       = Date.now();
+  state                = STATE.PAUSE;
+  intervalId           = setInterval(tick, 1000);
   render();
 }
 
+// PAUSE → BREAK
 function startBreak() {
   clearInterval(intervalId);
-  intervalId = null;
+  intervalId     = null;
   recordPauseIfNeeded();
   breakDuration  = breakSeconds;
   breakRemaining = breakSeconds;
@@ -603,14 +773,14 @@ function startBreak() {
   render();
 }
 
-// F7 — Salto directo WORKING → BREAK (sin pasar por PAUSE)
+// WORKING → BREAK directamente (F7)
 function startBreakDirect() {
   clearInterval(intervalId);
   intervalId   = null;
   pauseEarned  = Math.floor(workSeconds * cfg.breakRatio / cfg.ratio);
   bonusEarned  = calcBonusEarned(workSeconds - segmentStartSeconds);
   breakSeconds = pauseEarned + bonusEarned + accumulatedBreak;
-  saveHistoryEntry();
+  saveBlockToSession();
   currentInterruptions = [];
   breakDuration  = breakSeconds;
   breakRemaining = breakSeconds;
@@ -620,32 +790,34 @@ function startBreakDirect() {
   render();
 }
 
+// BREAK → WORKING (nuevo bloque dentro de la misma sesión)
 function skipBreak() {
-  clearInterval(intervalId);
-  intervalId           = null;
-  accumulatedBreak     = breakRemaining; // el sobrante se lleva a la siguiente sesión
-  pauseStartTime = null;
-  returnToIdle();
-}
+  updateActiveSessionBreakTaken(breakDuration - breakRemaining); // descanso parcial tomado
 
-// Vuelve a IDLE limpiando el estado de sesión
-function returnToIdle() {
   clearInterval(intervalId);
-  intervalId           = null;
-  pauseStartTime = null;
-  workSeconds          = 0;
-  segmentStartSeconds  = 0;
-  bonusEarned          = 0;
-  state                = STATE.IDLE;
+  intervalId          = null;
+  accumulatedBreak    = breakRemaining; // sobrante → siguiente bloque
+
+  workSeconds         = 0;
+  segmentStartSeconds = 0;
+  pauseEarned         = 0;
+  bonusEarned         = 0;
+  breakSeconds        = 0;
+  breakRemaining      = 0;
+  breakDuration       = 0;
+  currentInterruptions = [];
+  workStartTime       = Date.now();
+  state               = STATE.WORKING;
+  intervalId          = setInterval(tick, 1000);
   render();
 }
 
-// Reanuda el trabajo sin descansar; reinicia el timer de trabajo y guarda el descanso ganado como carry-over
+// PAUSE → WORKING (nuevo bloque, descanso ganado como carry-over)
 function continueWork() {
   clearInterval(intervalId);
   intervalId           = null;
   recordPauseIfNeeded();
-  accumulatedBreak     = breakSeconds; // el descanso ganado se lleva al siguiente segmento
+  accumulatedBreak     = breakSeconds; // descanso ganado → siguiente bloque
   currentInterruptions = [];
   workSeconds          = 0;
   segmentStartSeconds  = 0;
@@ -660,6 +832,7 @@ function continueWork() {
 
 // Resetea toda la sesión (la configuración se mantiene intacta)
 function resetAll() {
+  discardPartialSession();
   clearInterval(intervalId);
   intervalId           = null;
   workSeconds          = 0;
@@ -671,13 +844,14 @@ function resetAll() {
   breakDuration        = 0;
   workStartTime        = null;
   breakStartTime       = null;
-  pauseStartTime = null;
+  pauseStartTime       = null;
   interruptStartTime   = null;
   currentInterruptions = [];
   accumulatedBreak     = 0;
+  lastSessionTotals    = null;
+  idleContext          = 'clean';
   state                = STATE.IDLE;
   localStorage.removeItem('flowmodoro_bonus_base_seconds'); // clave legacy
-  localStorage.removeItem(LS_CURRENT_ENTRY);
   Object.values(LS).forEach(k => localStorage.removeItem(k));
   // Nota: fm_sessions NO se borra; el historial persiste entre resets
 }
@@ -687,13 +861,23 @@ function resetAll() {
 // Botón principal: dispatch table en lugar de cadena if/else
 btnEl.addEventListener('click', () => {
   const actions = {
-    [STATE.IDLE]:         startWork,
-    [STATE.WORKING]:      stopWork,
-    [STATE.PAUSE]: startBreak,
-    [STATE.BREAK]:        skipBreak,
-    [STATE.INTERRUPTED]:  resumeFromInterrupt,
+    [STATE.IDLE]:        startWork,
+    [STATE.WORKING]:     stopWork,
+    [STATE.PAUSE]:       startBreak,
+    [STATE.BREAK]:       skipBreak,
+    [STATE.INTERRUPTED]: resumeFromInterrupt,
   };
   actions[state]?.();
+});
+
+// btn2: "Finalizar sesión" en PAUSE · "Retomar sesión" en IDLE recovery
+btn2El.addEventListener('click', () => {
+  if (state === STATE.PAUSE)                                   finishSession();
+  else if (state === STATE.IDLE && idleContext === 'recovery') resumeSession();
+});
+
+btn3El.addEventListener('click', () => {
+  if (state === STATE.PAUSE) continueWork();
 });
 
 // Botón ☕ salto directo WORKING → BREAK (F7)
@@ -704,14 +888,6 @@ btnStartBreakEl.addEventListener('click', () => {
 // Botón de interrupción ⚡ (solo visible en WORKING)
 btnInterruptEl.addEventListener('click', () => {
   if (state === STATE.WORKING) startInterrupt();
-});
-
-btn2El.addEventListener('click', () => {
-  if (state === STATE.PAUSE) { accumulatedBreak = 0; returnToIdle(); }
-});
-
-btn3El.addEventListener('click', () => {
-  if (state === STATE.PAUSE) continueWork();
 });
 
 // Mensajes del shell: configuración actualizada, historial abierto, reset confirmado
@@ -745,7 +921,6 @@ historyClearBtn.addEventListener('click', (e) => {
 historyClearYesBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   localStorage.removeItem(LS_HISTORY);
-  localStorage.removeItem(LS_CURRENT_ENTRY);
   renderHistoryList();
   historyClearConfirm.hidden = true;
   historyClearBtn.hidden     = false;
@@ -757,18 +932,18 @@ historyClearNoBtn.addEventListener('click', (e) => {
   historyClearBtn.hidden     = false;
 });
 
-// ── Historial — Export/Import (F5) ─────────────────────────────────────────
+// ── Export/Import (F5) ─────────────────────────────────────────────────────
 
-const historyExportBtn       = document.getElementById('history-export-btn');
-const historyImportInput     = document.getElementById('history-import-input');
-const historyImportConfirm   = document.getElementById('history-import-confirm');
-const historyImportMsg       = document.getElementById('history-import-msg');
-const historyImportMergeBtn  = document.getElementById('history-import-merge-btn');
+const historyExportBtn        = document.getElementById('history-export-btn');
+const historyImportInput      = document.getElementById('history-import-input');
+const historyImportConfirm    = document.getElementById('history-import-confirm');
+const historyImportMsg        = document.getElementById('history-import-msg');
+const historyImportMergeBtn   = document.getElementById('history-import-merge-btn');
 const historyImportReplaceBtn = document.getElementById('history-import-replace-btn');
-const historyImportCancelBtn = document.getElementById('history-import-cancel-btn');
-const historyImportError     = document.getElementById('history-import-error');
+const historyImportCancelBtn  = document.getElementById('history-import-cancel-btn');
+const historyImportError      = document.getElementById('history-import-error');
 
-let pendingImport = null; // datos pendientes de confirmación
+let pendingImport = null;
 
 function exportHistory() {
   const raw = localStorage.getItem(LS_HISTORY);
@@ -787,20 +962,22 @@ function exportHistory() {
 
 function validateImport(parsed) {
   return Array.isArray(parsed)
-    && parsed.every(s => s && typeof s.id === 'string' && typeof s.date === 'string' && typeof s.workSeconds === 'number');
+    && parsed.every(s => s && typeof s.id === 'string' && typeof s.date === 'string'
+      && (typeof s.workSeconds === 'number'
+          || (s.totals && typeof s.totals.workSeconds === 'number')));
 }
 
 function showImportConfirm(imported) {
-  pendingImport              = imported;
-  historyImportError.hidden  = true;
+  pendingImport                = imported;
+  historyImportError.hidden    = true;
   historyImportMsg.textContent = `${imported.length} sesiones encontradas. ¿Combinar con los datos actuales o reemplazar?`;
-  historyImportConfirm.hidden = false;
+  historyImportConfirm.hidden  = false;
 }
 
 function hideImportConfirm() {
   historyImportConfirm.hidden = true;
-  pendingImport = null;
-  historyImportInput.value = '';
+  pendingImport               = null;
+  historyImportInput.value    = '';
 }
 
 historyExportBtn.addEventListener('click', (e) => { e.stopPropagation(); exportHistory(); });
@@ -845,7 +1022,7 @@ historyImportMergeBtn.addEventListener('click', (e) => {
 historyImportReplaceBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   if (!pendingImport) return;
-  const sorted = [...pendingImport].sort((a, b) => a.startTs - b.startTs);
+  const sorted  = [...pendingImport].sort((a, b) => a.startTs - b.startTs);
   const limited = sorted.slice(-500);
   localStorage.setItem(LS_HISTORY, JSON.stringify(limited));
   hideImportConfirm();
@@ -858,5 +1035,12 @@ historyImportCancelBtn.addEventListener('click', (e) => {
 });
 
 // ── Inicio ─────────────────────────────────────────────────────────────────
-restoreSession();
-render();
+if (localStorage.getItem(LS_ACTIVE_SESSION)) {
+  // Cierre inesperado: mostrar pantalla de recuperación sin sobreescribir LS
+  idleContext = 'recovery';
+  state       = STATE.IDLE;
+  render();
+} else {
+  restoreSession();
+  render();
+}
