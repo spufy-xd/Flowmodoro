@@ -206,7 +206,7 @@ body {
 }
 
 /* ── Buttons ────────────────────────────────────────────────────────────── */
-#btn, #btn2, #btn3 {
+#btn, #btn2, #btn3, #btn-start-break {
   padding: 0.65rem 2.25rem;
   font-family: 'Syne', system-ui, sans-serif;
   font-size: 0.65rem;
@@ -223,7 +223,7 @@ body {
   transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s, box-shadow 0.2s;
 }
 
-#btn::after, #btn2::after, #btn3::after {
+#btn::after, #btn2::after, #btn3::after, #btn-start-break::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -233,17 +233,17 @@ body {
   transform-origin: left;
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s;
 }
-#btn:hover::after, #btn2:hover::after, #btn3:hover::after {
+#btn:hover::after, #btn2:hover::after, #btn3:hover::after, #btn-start-break:hover::after {
   transform: scaleX(1);
   opacity: 0.06;
 }
 
-#btn:hover, #btn2:hover, #btn3:hover {
+#btn:hover, #btn2:hover, #btn3:hover, #btn-start-break:hover {
   border-color: #555;
   transform: translateY(-1px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
-#btn:active, #btn2:active, #btn3:active {
+#btn:active, #btn2:active, #btn3:active, #btn-start-break:active {
   transform: translateY(0) scale(0.98);
   box-shadow: none;
   transition-duration: 0.05s;
@@ -262,6 +262,10 @@ body {
 
 #btn.skip-break       { color: var(--working); border-color: var(--working); }
 #btn.skip-break:hover { background: var(--working-tint); }
+
+/* Direct-to-break button (F7) */
+#btn-start-break       { color: var(--breaking); border-color: var(--breaking); }
+#btn-start-break:hover { background: var(--breaking-tint); border-color: #a8f0c8; color: #a8f0c8; }
 
 /* ── Interrupt button (F3) ───────────────────────────────────────────────── */
 #btn-interrupt {
@@ -590,7 +594,7 @@ body {
 @media (max-width: 640px) {
   body { gap: clamp(1rem, 4vh, 1.75rem); padding: 1.5rem 1rem; }
 
-  #btn, #btn2, #btn3 {
+  #btn, #btn2, #btn3, #btn-start-break {
     padding: 0.6rem 1.5rem;
     font-size: 0.6rem;
     letter-spacing: 0.18em;
@@ -601,7 +605,7 @@ body {
 @media (max-width: 380px) {
   body { gap: clamp(0.75rem, 3vh, 1.25rem); padding: 1rem 0.75rem; }
 
-  #btn, #btn2, #btn3 {
+  #btn, #btn2, #btn3, #btn-start-break {
     padding: 0.55rem 1.2rem;
     font-size: 0.58rem;
   }

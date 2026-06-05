@@ -441,18 +441,31 @@ body {
 #cancel-btn:hover  { border-color: #555; color: #999; transform: translateY(-1px); }
 #cancel-btn:active { transform: translateY(0) scale(0.98); }
 
+/* ── Reiniciar en panel running (DONE) ──────────────────────────────────── */
+#restart-btn {
+  background: none;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #3a3a3a;
+  cursor: pointer;
+  padding: 0.52rem 0.7rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  transition: border-color 0.2s, color 0.2s, transform 0.15s;
+}
+#restart-btn:hover  { border-color: #4a4a4a; color: #888; transform: translateY(-1px); }
+#restart-btn:active { transform: translateY(0) scale(0.98); }
+
 /* ── Eliminar en panel running (DONE) ────────────────────────────────────── */
 #done-delete-btn {
-  padding: 0.55rem 1rem;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+  background: none;
   border: 1px solid #482020;
   border-radius: 6px;
-  background: transparent;
   color: #5a2020;
   cursor: pointer;
+  padding: 0.52rem 0.7rem;
+  font-size: 0.7rem;
+  line-height: 1;
   transition: border-color 0.2s, color 0.2s, transform 0.15s;
 }
 #done-delete-btn:hover  { border-color: #a32e2e; color: var(--done); transform: translateY(-1px); }

@@ -92,6 +92,7 @@ const statusEl         = document.getElementById('status');
 const btnEl            = document.getElementById('btn');
 const btn2El           = document.getElementById('btn2');
 const btn3El           = document.getElementById('btn3');
+const btnStartBreakEl  = document.getElementById('btn-start-break');
 const btnInterruptEl   = document.getElementById('btn-interrupt');
 const interruptPanel   = document.getElementById('interrupt-panel');
 const interruptInput   = document.getElementById('interrupt-input');
@@ -344,6 +345,7 @@ function render() {
     btnEl.hidden             = false;
     btn2El.hidden            = true;
     btn3El.hidden            = true;
+    btnStartBreakEl.hidden   = true;
     btnInterruptEl.hidden    = true;
     interruptPanel.hidden    = false;
 
@@ -355,13 +357,14 @@ function render() {
       ? `⏳ descanso acumulado: ${formatShortTime(accumulatedBreak)}`
       : '';
     statusEl.textContent  = 'listo para empezar';
-    btnEl.textContent     = '▶ Iniciar';
-    btnEl.className       = '';
-    btnEl.hidden          = false;
-    btn2El.hidden         = true;
-    btn3El.hidden         = true;
-    btnInterruptEl.hidden = true;
-    interruptPanel.hidden = true;
+    btnEl.textContent       = '▶ Iniciar';
+    btnEl.className         = '';
+    btnEl.hidden            = false;
+    btn2El.hidden           = true;
+    btn3El.hidden           = true;
+    btnStartBreakEl.hidden  = true;
+    btnInterruptEl.hidden   = true;
+    interruptPanel.hidden   = true;
 
   } else if (state === STATE.WORKING) {
     timerEl.textContent   = formatTime(workSeconds);
@@ -369,11 +372,12 @@ function render() {
     pauseTimerEl.hidden   = true;
     infoEl.innerHTML      = buildBonusProgressHtml();
     statusEl.textContent  = 'trabajando…';
-    btnEl.textContent     = '⏸ Pausar';
-    btnEl.className       = 'stop';
-    btnEl.hidden          = false;
-    btn2El.hidden         = true;
-    btn3El.hidden         = true;
+    btnEl.textContent       = '⏸ Pausar';
+    btnEl.className         = 'stop';
+    btnEl.hidden            = false;
+    btn2El.hidden           = true;
+    btn3El.hidden           = true;
+    btnStartBreakEl.hidden  = false;
     // Botón ⚡ con contador de interrupciones (F3)
     btnInterruptEl.hidden       = false;
     btnInterruptEl.textContent  = currentInterruptions.length > 0
@@ -395,14 +399,15 @@ function render() {
     pauseTimerEl.hidden      = pauseDur < 180;
     pauseTimerEl.textContent = pauseDur >= 180 ? `⏸ ${formatTime(pauseDur)}` : '';
 
-    btnEl.hidden          = breakSeconds === 0; // ocultar si no hay descanso disponible
-    btnEl.textContent     = '▶ Iniciar descanso';
-    btnEl.className       = 'start-break';
-    btn2El.hidden         = true;
-    btn3El.hidden         = false;
-    btn3El.textContent    = 'Continuar →';
-    btnInterruptEl.hidden = true;
-    interruptPanel.hidden = true;
+    btnEl.hidden            = breakSeconds === 0; // ocultar si no hay descanso disponible
+    btnEl.textContent       = '▶ Iniciar descanso';
+    btnEl.className         = 'start-break';
+    btn2El.hidden           = true;
+    btn3El.hidden           = false;
+    btn3El.textContent      = 'Continuar →';
+    btnStartBreakEl.hidden  = true;
+    btnInterruptEl.hidden   = true;
+    interruptPanel.hidden   = true;
 
   } else if (state === STATE.BREAK) {
     timerEl.textContent   = formatTime(breakRemaining);
@@ -411,13 +416,14 @@ function render() {
     infoEl.innerHTML      = buildBreakInfoHtml();
     const endTime         = new Date(Date.now() + breakRemaining * 1000);
     statusEl.textContent  = `descansando… fin a las ${pad(endTime.getHours())}:${pad(endTime.getMinutes())}`;
-    btnEl.textContent     = '⏭ Saltar descanso';
-    btnEl.className       = 'skip-break';
-    btnEl.hidden          = false;
-    btn2El.hidden         = true;
-    btn3El.hidden         = true;
-    btnInterruptEl.hidden = true;
-    interruptPanel.hidden = true;
+    btnEl.textContent       = '⏭ Saltar descanso';
+    btnEl.className         = 'skip-break';
+    btnEl.hidden            = false;
+    btn2El.hidden           = true;
+    btn3El.hidden           = true;
+    btnStartBreakEl.hidden  = true;
+    btnInterruptEl.hidden   = true;
+    interruptPanel.hidden   = true;
   }
 
   updateTabTitle();
@@ -596,6 +602,23 @@ function startBreak() {
   render();
 }
 
+// F7 — Salto directo WORKING → BREAK (sin pasar por BREAK_EARNED)
+function startBreakDirect() {
+  clearInterval(intervalId);
+  intervalId   = null;
+  breakEarned  = Math.floor(workSeconds * cfg.breakRatio / cfg.ratio);
+  bonusEarned  = calcBonusEarned(workSeconds - segmentStartSeconds);
+  breakSeconds = breakEarned + bonusEarned + accumulatedBreak;
+  saveHistoryEntry();
+  currentInterruptions = [];
+  breakDuration  = breakSeconds;
+  breakRemaining = breakSeconds;
+  breakStartTime = Date.now();
+  state          = STATE.BREAK;
+  intervalId     = setInterval(tick, 1000);
+  render();
+}
+
 function skipBreak() {
   clearInterval(intervalId);
   intervalId           = null;
@@ -665,6 +688,11 @@ btnEl.addEventListener('click', () => {
     [STATE.INTERRUPTED]:  resumeFromInterrupt,
   };
   actions[state]?.();
+});
+
+// Botón ☕ salto directo WORKING → BREAK (F7)
+btnStartBreakEl.addEventListener('click', () => {
+  if (state === STATE.WORKING) startBreakDirect();
 });
 
 // Botón de interrupción ⚡ (solo visible en WORKING)
