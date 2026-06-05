@@ -86,7 +86,6 @@ body {
 }
 #header-time:hover   { opacity: 0.7; }
 #header-time.running { color: var(--running); }
-#header-time.paused  { color: var(--running); opacity: 0.45; }
 #header-time.done    { color: var(--done); }
 #header-time.endtime { color: #c88848; letter-spacing: 0.04em; }
 
@@ -109,8 +108,16 @@ body {
   max-width: 300px;
 }
 
-#title-input {
+/* ── Setup top row (title + notify) ──────────────────────────────────────── */
+#setup-top-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   width: 100%;
+}
+
+#title-input {
+  flex: 1;
   background: var(--bg-1);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -122,6 +129,31 @@ body {
 }
 #title-input::placeholder { color: var(--text-dim); }
 #title-input:focus { outline: none; border-color: #3a3a3a; }
+
+/* ── UX5: Notify checkbox ────────────────────────────────────────────────── */
+#notify-label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--text-faint);
+  transition: color 0.2s;
+  padding: 0.3rem;
+}
+#notify-label:hover { color: var(--text-dim); }
+#notify-label input[type="checkbox"] {
+  display: none;
+}
+#notify-label.active { color: var(--running); }
+
+#notify-denied-note {
+  font-size: 0.65rem;
+  color: var(--done);
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+}
 
 #time-row {
   display: flex;
@@ -174,12 +206,95 @@ body {
 }
 #target-input:focus { outline: none; border-color: #3a3a3a; }
 
+/* ── UX2: flash-error animation ──────────────────────────────────────────── */
+@keyframes flash-error {
+  0%   { border-color: var(--border); box-shadow: none; }
+  25%  { border-color: var(--done); box-shadow: 0 0 8px rgba(231, 111, 81, 0.35); }
+  75%  { border-color: var(--done); box-shadow: 0 0 8px rgba(231, 111, 81, 0.35); }
+  100% { border-color: var(--border); box-shadow: none; }
+}
+#target-input.flash-error {
+  animation: flash-error 0.6s ease forwards;
+}
+
 #tomorrow-note {
   font-size: 0.7rem;
   color: var(--running);
   letter-spacing: 0.08em;
   opacity: 0.85;
 }
+
+/* ── UX4: Duration presets ───────────────────────────────────────────────── */
+#duration-presets {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.preset-btn {
+  background: none;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  color: var(--text-faint);
+  font-size: 0.65rem;
+  font-family: inherit;
+  letter-spacing: 0.08em;
+  padding: 0.28rem 0.55rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, transform 0.1s;
+}
+.preset-btn:hover {
+  border-color: #555;
+  color: var(--text);
+  transform: translateY(-1px);
+}
+.preset-btn:active { transform: scale(0.96); }
+.preset-btn.active {
+  border-color: var(--running);
+  color: var(--running);
+}
+
+#preset-custom-btn {
+  background: none;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  color: var(--text-faint);
+  font-size: 0.7rem;
+  padding: 0.28rem 0.55rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, transform 0.1s;
+}
+#preset-custom-btn:hover {
+  border-color: #555;
+  color: var(--text);
+  transform: translateY(-1px);
+}
+#preset-custom-btn:active { transform: scale(0.96); }
+#preset-custom-btn.active {
+  border-color: var(--running);
+  color: var(--running);
+}
+
+#preset-save-btn {
+  background: none;
+  border: 1px solid #3a3010;
+  border-radius: 5px;
+  color: #6a5a20;
+  font-size: 0.6rem;
+  font-family: inherit;
+  letter-spacing: 0.06em;
+  padding: 0.28rem 0.55rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, transform 0.1s;
+}
+#preset-save-btn:hover {
+  border-color: #a09030;
+  color: #d4b840;
+  transform: translateY(-1px);
+}
+#preset-save-btn:active { transform: scale(0.96); }
 
 /* ── Button row ──────────────────────────────────────────────────────────── */
 #btn-row {
@@ -284,11 +399,6 @@ body {
   text-shadow: 0 0 50px rgba(244, 162, 97, 0.2);
   opacity: 1;
 }
-#timer.paused {
-  color: var(--running);
-  opacity: 0.38;
-  text-shadow: none;
-}
 #timer.done {
   color: var(--done);
   text-shadow: 0 0 50px rgba(231, 111, 81, 0.2);
@@ -314,7 +424,7 @@ body {
   margin-top: 0.25rem;
 }
 
-/* ── Pausar / Reanudar / Reiniciar ───────────────────────────────────────── */
+/* ── Editar / Iniciar (desde edición) / Reiniciar ────────────────────────── */
 #cancel-btn {
   padding: 0.55rem 1.75rem;
   font-size: 0.62rem;

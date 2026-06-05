@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styleCountdown.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
@@ -26,7 +26,15 @@
     <div id="module-content" hidden>
 
       <div id="setup">
-        <input id="title-input" type="text" placeholder="Título (opcional)" maxlength="60" autocomplete="off" spellcheck="false" />
+        <div id="setup-top-row">
+          <input id="title-input" type="text" placeholder="Título (opcional)" maxlength="60" autocomplete="off" spellcheck="false" />
+          <!-- UX5: checkbox de notificación, solo visible en IDLE -->
+          <label id="notify-label" title="Recibir notificación del navegador al llegar a 0">
+            <input type="checkbox" id="notify-check" />
+            🔔
+          </label>
+        </div>
+        <p id="notify-denied-note" hidden>Permiso denegado</p>
         <div id="mode-toggle">
           <button id="mode-time-btn">hora fin</button>
           <button id="mode-dur-btn">duración</button>
@@ -36,6 +44,15 @@
           <input id="target-input" type="time" />
         </div>
         <p id="tomorrow-note" hidden></p>
+        <!-- UX4: presets de duración, solo visibles en modo duración -->
+        <div id="duration-presets" hidden>
+          <button class="preset-btn" data-seconds="300">5'</button>
+          <button class="preset-btn" data-seconds="600">10'</button>
+          <button class="preset-btn" data-seconds="1500">25'</button>
+          <button class="preset-btn" data-seconds="3600">1h</button>
+          <button id="preset-custom-btn" title="Preset personalizado">+</button>
+          <button id="preset-save-btn" hidden title="Guardar como preset ★">Guardar ★</button>
+        </div>
         <div id="btn-row">
           <button id="clear-btn" title="Limpiar datos">✕</button>
           <button id="start-btn">▶ Iniciar</button>
@@ -58,6 +75,6 @@
   </div>
 
   <script src="../utils.js"></script>
-  <script src="appCountdown.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
