@@ -1,0 +1,231 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: #0f0f0f; }
+[hidden] { display: none !important; }
+
+/* ── Shell header ────────────────────────────────────────────────────── */
+#shell-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3rem;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f0f0f;
+  border-bottom: 1px solid #161616;
+}
+
+#shell-header h1 {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.6em;
+  text-transform: uppercase;
+  color: #2a2a2a;
+  font-family: 'Syne', system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+#shell-history-btn,
+#shell-cfg-btn {
+  background: none;
+  border: none;
+  color: #2a2a2a;
+  cursor: pointer;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.25s, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+#shell-history-btn { font-size: 0.85rem; }
+#shell-cfg-btn     { font-size: 0.8rem; }
+#shell-history-btn:hover { color: #aaa; }
+#shell-cfg-btn:hover  { color: #aaa; transform: rotate(60deg); }
+#shell-cfg-btn:active { color: #ccc; transform: rotate(90deg); }
+
+#shell-reset-btn {
+  background: none;
+  border: none;
+  color: #2a2a2a;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  transition: color 0.15s;
+  line-height: 1;
+}
+#shell-reset-btn:hover { color: #e63946; }
+
+#shell-reset-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-family: 'Syne', system-ui, sans-serif;
+  color: #555;
+  letter-spacing: 0.05em;
+}
+
+#shell-reset-yes-btn, #shell-reset-no-btn {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.72rem;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid;
+  background: none;
+  font-family: 'Syne', system-ui, sans-serif;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1.4;
+}
+#shell-reset-yes-btn       { color: #e63946; border-color: #e63946; }
+#shell-reset-yes-btn:hover { background: #2a1212; color: #ff9a9a; border-color: #ff9a9a; }
+#shell-reset-no-btn        { color: #555; border-color: #252525; }
+#shell-reset-no-btn:hover  { background: #181818; color: #aaa; border-color: #555; }
+
+/* ── Settings panel ──────────────────────────────────────────────────── */
+@keyframes shellPanelIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+#shell-cfg-panel {
+  position: fixed;
+  top: calc(3rem + 0.5rem);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: max-content;
+  max-width: 90vw;
+  z-index: 100;
+  font-size: 0.72rem;
+  font-family: 'Syne', system-ui, sans-serif;
+  letter-spacing: 0.07em;
+  color: #999;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #1c1c1c 0%, #131313 100%);
+  border: 1px solid #292929;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.85), 0 2px 8px rgba(0,0,0,0.5),
+              inset 0 1px 0 rgba(255,255,255,0.04);
+  white-space: nowrap;
+  animation: shellPanelIn 0.2s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+#shell-cfg-panel::before {
+  content: 'Configuración';
+  display: block;
+  font-size: 0.5rem;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: #444;
+  padding: 0.75rem 1.25rem 0.6rem;
+  border-bottom: 1px solid #1e1e1e;
+  background: rgba(255,255,255,0.015);
+}
+#shell-cfg-panel > label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 1.25rem;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+#shell-cfg-panel > label:hover { background: rgba(255,255,255,0.03); }
+#shell-cfg-panel .sep { border-top: 1px solid #1e1e1e; }
+#shell-cfg-panel input[type="number"] {
+  width: 3rem;
+  background: #0c0c0c;
+  border: 1px solid #252525;
+  border-radius: 5px;
+  color: #ddd;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 200;
+  padding: 0.25rem 0.35rem;
+  text-align: center;
+  appearance: textfield;
+}
+#shell-cfg-panel input[type="number"]::-webkit-outer-spin-button,
+#shell-cfg-panel input[type="number"]::-webkit-inner-spin-button { appearance: none; }
+#shell-cfg-panel input[type="number"]:focus {
+  outline: none;
+  border-color: #3d3d3d;
+  box-shadow: 0 0 0 2px rgba(116,179,240,0.12);
+  color: #eee;
+}
+#shell-cfg-panel input[type="checkbox"] {
+  accent-color: #74b3f0;
+  cursor: pointer;
+  width: 12px;
+  height: 12px;
+}
+
+/* ── Iframe Flowmodoro ────────────────────────────────────────────────── */
+#frame-flowmodoro {
+  position: fixed;
+  top: 3rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: calc(100% - 3rem);
+  border: none;
+}
+
+/* ── Countdown widgets ────────────────────────────────────────────────── */
+#countdown-area {
+  position: fixed;
+  top: calc(1rem + 3rem);
+  left: 1rem;
+  width: 270px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.countdown-wrapper {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.03);
+}
+
+.frame-countdown {
+  display: block;
+  width: 100%;
+  height: 42px;
+  border: none;
+}
+
+#add-countdown-btn {
+  align-self: flex-start;
+  background: none;
+  border: 1px dashed #2a2a2a;
+  border-radius: 4px;
+  color: #3a3a3a;
+  cursor: pointer;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  padding: 0.4rem 1rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+#add-countdown-btn:hover {
+  border-color: #444;
+  color: #666;
+}
+
+@media (max-width: 600px) {
+  #countdown-area {
+    top: auto;
+    bottom: 1rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+  }
+}
