@@ -8,16 +8,21 @@ Abre con doble clic en `index.html` (sin instalación).
 ```
 Flowmodoro/
   index.html                   ← shell: iframe de Flowmodoro + widgets de cuenta atrás
+  shell.css                    ← estilos del shell
+  shell.js                     ← lógica del shell
   utils.js                     ← helpers compartidos (pad, formatTime, formatShortTime, playEndSound)
-  style.css                    ← estilos base compartidos
-  Flowmodoro/
-    indexFlowmodoro.html       ← app principal
-    appFlowmodoro.js           ← lógica completa (máquina de estados, timers, localStorage)
-    styleFlowmodoro.css        ← estilos del módulo
+  flowmodoro/
+    index.html                 ← app principal
+    app.js                     ← lógica completa (máquina de estados, timers, localStorage)
+    style.css                  ← estilos del módulo
   countdown/
-    indexCountdown.html        ← widget de cuenta atrás
-    appCountdown.js            ← lógica completa
-    styleCountdown.css         ← estilos del módulo
+    index.html                 ← widget de cuenta atrás
+    app.js                     ← lógica completa
+    style.css                  ← estilos del módulo
+  docs/
+    FUNCIONALIDADES.md
+    PENDING_FEATURES.md
+    pendientes.md
 ```
 
 ## Fórmula
@@ -32,8 +37,8 @@ Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descans
 | Estado | Timer | Color | Acciones |
 |---|---|---|---|
 | IDLE | último trabajo | blanco | ▶ Iniciar |
-| WORKING | sube | azul | ⏹ Parar |
-| BREAK_EARNED | descanso total | amarillo | ▶ Iniciar descanso · Continuar → |
+| WORKING | sube | azul | ⏸ Pausar |
+| BREAK_EARNED | Pausa | amarillo | ▶ Iniciar descanso · Continuar → |
 | BREAK | cuenta regresiva | verde | ⏭ Saltar descanso |
 
 ## Máquina de estados — Countdown

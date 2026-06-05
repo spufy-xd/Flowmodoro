@@ -29,7 +29,7 @@ Documento de referencia para pruebas y contexto. Cubre todo el comportamiento es
 - [ ] Si se salta el descanso, los segundos restantes se guardan como `accumulatedBreak`
 - [ ] En IDLE se muestra "⏳ descanso acumulado: MM:SS" si hay carry-over
 - [ ] El carry-over se suma al siguiente descanso ganado
-- [ ] El carry-over se descarta si se pulsa **Continuar →** (se elige seguir trabajando)
+- [ ] El carry-over se almacena si se pulsa **Continuar →** (se elige seguir trabajando)
 - [ ] El carry-over se pone a 0 cuando el descanso termina de forma natural
 
 ### Bonus por trabajo continuado

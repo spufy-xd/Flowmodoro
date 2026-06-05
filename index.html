@@ -4,118 +4,52 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Flowmodoro</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; overflow: hidden; background: #0f0f0f; }
-
-    #frame-flowmodoro {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-
-    #countdown-area {
-      position: fixed;
-      top: 1rem;
-      left: 1rem;
-      width: 270px;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    .countdown-wrapper {
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.03);
-    }
-
-    .frame-countdown {
-      display: block;
-      width: 100%;
-      height: 42px;
-      border: none;
-    }
-
-    #add-countdown-btn {
-      align-self: flex-start;
-      background: none;
-      border: 1px dashed #2a2a2a;
-      border-radius: 4px;
-      color: #3a3a3a;
-      cursor: pointer;
-      font-size: 0.6rem;
-      font-weight: 700;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      padding: 0.4rem 1rem;
-      transition: border-color 0.2s, color 0.2s;
-    }
-    #add-countdown-btn:hover {
-      border-color: #444;
-      color: #666;
-    }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100&family=Syne:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shell.css" />
 </head>
 <body>
-  <iframe id="frame-flowmodoro" src="flowmodoro/indexFlowmodoro.html"></iframe>
+
+  <!-- Header global del shell -->
+  <header id="shell-header">
+    <h1>Flowmodoro
+      <button id="shell-history-btn" title="Ver historial">⏱</button>
+      <button id="shell-cfg-btn" title="Configuración">⚙</button>
+      <span id="shell-reset-area">
+        <button id="shell-reset-btn" title="Reiniciar todo">↺</button>
+        <span id="shell-reset-confirm" hidden>¿Reinicar?&nbsp;<button id="shell-reset-yes-btn">Sí</button><button id="shell-reset-no-btn">No</button></span>
+      </span>
+    </h1>
+  </header>
+
+  <!-- Panel de configuración global -->
+  <div id="shell-cfg-panel" hidden>
+    <label>
+      <input id="shell-break-input" type="number" min="1" max="60" />
+      min descanso por cada
+      <input id="shell-ratio-input" type="number" min="1" max="60" />
+      min trabajo
+    </label>
+    <label class="sep">
+      <input id="shell-bonus-input" type="number" min="0" max="120" />
+      min extra por cada
+      <input id="shell-bonus-target-input" type="number" min="1" max="480" />
+      min seguidos
+    </label>
+    <label class="sep">
+      <input type="checkbox" id="shell-title-check" />
+      Mostrar tiempo en título
+    </label>
+  </div>
+
+  <iframe id="frame-flowmodoro" src="flowmodoro/index.html"></iframe>
 
   <div id="countdown-area">
     <div id="countdown-container"></div>
     <button id="add-countdown-btn">+ Nueva cuenta atrás</button>
   </div>
 
-  <script>
-    const container = document.getElementById('countdown-container');
-    const addBtn    = document.getElementById('add-countdown-btn');
-
-    let cdIds = JSON.parse(localStorage.getItem('countdown_ids') || '["0"]');
-
-    function addCountdownFrame(id, isNew = false) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'countdown-wrapper';
-      wrapper.id = `cd-wrapper-${id}`;
-
-      const iframe = document.createElement('iframe');
-      iframe.id        = `frame-countdown-${id}`;
-      iframe.className = 'frame-countdown';
-      const newParam   = isNew ? '&new=1' : '';
-      iframe.src       = `countdown/indexCountdown.html?id=${encodeURIComponent(id)}${newParam}`;
-      iframe.scrolling = 'no';
-
-      wrapper.appendChild(iframe);
-      container.appendChild(wrapper);
-    }
-
-    cdIds.forEach(id => addCountdownFrame(id));
-
-    addBtn.addEventListener('click', () => {
-      const newId = String(Date.now());
-      cdIds.push(newId);
-      localStorage.setItem('countdown_ids', JSON.stringify(cdIds));
-      addCountdownFrame(newId, true);
-    });
-
-    window.addEventListener('message', (e) => {
-      if (!e.data) return;
-      if (e.data.type === 'title-update') {
-        // El iframe de Flowmodoro no puede cambiar el título de la pestaña directamente;
-        // lo recibimos aquí y lo aplicamos al documento padre.
-        document.title = e.data.title;
-      } else if (e.data.type === 'countdown-resize') {
-        const frame = document.getElementById(`frame-countdown-${e.data.id}`);
-        if (frame) frame.style.height = e.data.height + 'px';
-      } else if (e.data.type === 'countdown-remove') {
-        const id = e.data.id;
-        cdIds = cdIds.filter(x => x !== id);
-        localStorage.setItem('countdown_ids', JSON.stringify(cdIds));
-        const wrapper = document.getElementById(`cd-wrapper-${id}`);
-        if (wrapper) wrapper.remove();
-      }
-    });
-  </script>
+  <script src="shell.js"></script>
 </body>
 </html>

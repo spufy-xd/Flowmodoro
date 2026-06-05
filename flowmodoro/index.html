@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flowmodoro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100&family=Syne:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="info"></div>
+  <div id="status">listo para empezar</div>
+  
+  <div id="timer" class="idle">00:00:00</div>
+  
+  <div id="pause-timer" hidden></div>
+  <div id="actions">
+    <button id="btn">&#9654; Iniciar</button>
+    <button id="btn2" hidden>Saltar &#8594;</button>
+    <button id="btn3" hidden>Continuar &#8594;</button>
+    <button id="btn-start-break" hidden>☕ Iniciar descanso</button>
+    <button id="btn-interrupt" hidden title="Registrar interrupción">⚡</button>
+  </div>
+
+  <!-- Panel de interrupción (visible solo en estado INTERRUPTED) -->
+  <div id="interrupt-panel" hidden>
+    <input id="interrupt-input" type="text" placeholder="¿Qué ha pasado? (opcional)" maxlength="200" autocomplete="off" />
+  </div>
+
+  <!-- Panel de historial (overlay) -->
+  <div id="history-panel" hidden>
+    <div id="history-top">
+      <span id="history-title-label">Historial</span>
+      <button id="history-close-btn" aria-label="Cerrar historial">✕</button>
+    </div>
+    <div id="history-list"></div>
+    <div id="history-footer">
+      <div id="history-footer-row1">
+        <button id="history-clear-btn">🗑 Borrar todo</button>
+        <span id="history-clear-confirm" hidden>
+          ¿Borrar todo?&nbsp;
+          <button id="history-clear-yes-btn">Sí</button>
+          <button id="history-clear-no-btn">No</button>
+        </span>
+        <div id="history-io-btns">
+          <button id="history-export-btn">↓ Exportar</button>
+          <label id="history-import-label">↑ Importar<input type="file" id="history-import-input" accept=".json" /></label>
+        </div>
+      </div>
+      <div id="history-import-confirm" hidden>
+        <span id="history-import-msg"></span>
+        <button id="history-import-merge-btn">Combinar</button>
+        <button id="history-import-replace-btn">Reemplazar</button>
+        <button id="history-import-cancel-btn">Cancelar</button>
+      </div>
+      <p id="history-import-error" hidden></p>
+    </div>
+  </div>
+
+  <script src="../utils.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
