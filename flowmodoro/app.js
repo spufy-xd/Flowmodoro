@@ -640,13 +640,18 @@ function returnToIdle() {
   render();
 }
 
-// Reanuda el trabajo sin descansar; reinicia el contador de bonus del segmento
+// Reanuda el trabajo sin descansar; reinicia el timer de trabajo y guarda el descanso ganado como carry-over
 function continueWork() {
   clearInterval(intervalId);
   intervalId           = null;
   recordPauseIfNeeded();
-  currentInterruptions = []; // nuevo segmento: interrupciones anteriores ya en historial
-  segmentStartSeconds  = workSeconds; // el bonus vuelve a cero para este nuevo segmento
+  accumulatedBreak     = breakSeconds; // el descanso ganado se lleva al siguiente segmento
+  currentInterruptions = [];
+  workSeconds          = 0;
+  segmentStartSeconds  = 0;
+  pauseEarned          = 0;
+  bonusEarned          = 0;
+  breakSeconds         = 0;
   workStartTime        = Date.now();
   state                = STATE.WORKING;
   intervalId           = setInterval(tick, 1000);
