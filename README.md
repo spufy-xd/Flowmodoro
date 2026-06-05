@@ -27,8 +27,8 @@ Flowmodoro/
 
 ## Fórmula
 ```
-breakEarned  = floor(workSeconds * breakRatio / ratio)
-breakSeconds = breakEarned + bonusEarned + accumulatedBreak
+pauseEarned  = floor(workSeconds * breakRatio / ratio)
+breakSeconds = pauseEarned + bonusEarned + accumulatedBreak
 ```
 Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descanso por ciclo (defaults: 25 y 5).
 
@@ -38,7 +38,7 @@ Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descans
 |---|---|---|---|
 | IDLE | último trabajo | blanco | ▶ Iniciar |
 | WORKING | sube | azul | ⏸ Pausar |
-| BREAK_EARNED | Pausa | amarillo | ▶ Iniciar descanso · Continuar → |
+| PAUSE | Pausa | amarillo | ▶ Iniciar descanso · Continuar → |
 | BREAK | cuenta regresiva | verde | ⏭ Saltar descanso |
 
 ## Máquina de estados — Countdown
@@ -47,16 +47,16 @@ Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descans
 |---|---|---|
 | IDLE | — | ▶ Iniciar |
 | RUNNING | cuenta atrás | ⏸ Pausar |
-| PAUSED | congelado | ▶ Reanudar |
+| PAUSE | congelado | ▶ Reanudar |
 | DONE | 0, ¡Tiempo! | ↺ Reiniciar · 🗑 Eliminar |
 
 ## Lo que está implementado
 
 ### Timer de trabajo
 - Reloj de pared (wall-clock anchor): `workSeconds = segmentStart + floor((Date.now() - workStartTime) / 1000)`. Evita drift y throttling del browser.
-- Al parar: calcula `breakEarned`, `bonusEarned`, `breakSeconds` y pasa a BREAK_EARNED.
+- Al parar: calcula `pauseEarned`, `bonusEarned`, `breakSeconds` y pasa a PAUSE.
 
-### Estado BREAK_EARNED
+### Estado PAUSE
 - Muestra desglose: descanso ganado, bonus (si aplica), acumulado (si aplica).
 - **▶ Iniciar descanso** → lanza countdown (BREAK).
 - **Continuar →** → reanuda WORKING; reinicia el contador de bonus para el nuevo segmento.
@@ -87,7 +87,7 @@ Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descans
 ### Tiempo en el título de la pestaña
 - El app corre en un `<iframe>`; usa `postMessage` al documento padre para actualizar la pestaña real del navegador.
 - WORKING: `▶ HH:MM:SS — Flowmodoro`
-- BREAK_EARNED: `⏸ HH:MM:SS — Flowmodoro`
+- PAUSE: `⏸ HH:MM:SS — Flowmodoro`
 - BREAK: `☕ HH:MM:SS — Flowmodoro`
 - IDLE: `Flowmodoro`
 
@@ -102,7 +102,7 @@ Donde `ratio` = minutos de trabajo por ciclo y `breakRatio` = minutos de descans
 
 ### Persistencia de sesión
 - Al refrescar, el estado se restaura automáticamente en todos los módulos.
-- WORKING al cerrar → reabre en BREAK_EARNED con el tiempo real transcurrido calculado.
+- WORKING al cerrar → reabre en PAUSE con el tiempo real transcurrido calculado.
 - BREAK al cerrar → restaura el countdown exacto; si ya expiró, va directo a IDLE.
 
 ### Reset completo
