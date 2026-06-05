@@ -2,7 +2,7 @@
 const STATE = {
   IDLE:         'IDLE',
   WORKING:      'WORKING',
-  BREAK_EARNED: 'BREAK_EARNED',
+  PAUSE: 'PAUSE',
   BREAK:        'BREAK',
   INTERRUPTED:  'INTERRUPTED', // trabajo pausado por evento externo (F3)
 };
@@ -30,13 +30,13 @@ const LS = {
   workSeconds:      'flowmodoro_work_seconds',
   segmentStart:     'flowmodoro_work_seconds_base',
   workStartTime:    'flowmodoro_work_start_time',
-  breakEarned:      'flowmodoro_break_earned',
+  pauseEarned:      'flowmodoro_pause_earned',
   bonusEarned:      'flowmodoro_bonus_earned',
   breakSeconds:     'flowmodoro_break_seconds',
   breakRemaining:   'flowmodoro_break_remaining',
   breakDuration:    'flowmodoro_break_total',
   breakStartTime:   'flowmodoro_break_start_time',
-  breakEarnedStart:     'flowmodoro_break_earned_start', // cuándo entramos en BREAK_EARNED
+  pauseStart:        'flowmodoro_pause_start', 
   currentInterruptions: 'flowmodoro_current_interruptions', // JSON array de interrupciones (F3)
 };
 
@@ -59,7 +59,7 @@ function saveCfg(key, prop, val, min = 1) {
 // ── Variables de sesión ────────────────────────────────────────────────────
 let state            = STATE.IDLE;
 let workSeconds      = 0;
-let breakEarned      = 0;
+let pauseEarned      = 0;
 let bonusEarned      = 0;
 let breakSeconds     = 0;
 let breakRemaining   = 0;
@@ -77,9 +77,9 @@ let workStartTime    = null; // Date.now() cuando arrancó el intervalo de traba
 let breakStartTime   = null; // Date.now() cuando arrancó el countdown de descanso
 let breakDuration    = 0;    // snapshot de breakSeconds cuando arrancó el countdown
 
-// breakEarnedStartTime: cuándo entramos en BREAK_EARNED.
+// pauseStartTime: cuándo entramos en PAUSE.
 // Se usa para medir la duración de la pausa (F_PAUSE).
-let breakEarnedStartTime = null;
+let pauseStartTime = null;
 
 // F3 — Interrupciones
 let interruptStartTime   = null; // Date.now() cuando empezó la interrupción actual
@@ -135,7 +135,7 @@ function saveHistoryEntry() {
     startTs:              workStartTime || now,
     endTs:                now,
     workSeconds,
-    breakEarned,
+    pauseEarned,
     bonusEarned,
     bonusCyclesCompleted: bonusCycles,
     accumulatedBreak,
@@ -250,13 +250,13 @@ function saveSession() {
   localStorage.setItem(LS.workSeconds,      workSeconds);
   localStorage.setItem(LS.segmentStart,     segmentStartSeconds);
   localStorage.setItem(LS.workStartTime,    workStartTime  ?? '');
-  localStorage.setItem(LS.breakEarned,      breakEarned);
+  localStorage.setItem(LS.pauseEarned,      pauseEarned);
   localStorage.setItem(LS.bonusEarned,      bonusEarned);
   localStorage.setItem(LS.breakSeconds,     breakSeconds);
   localStorage.setItem(LS.breakRemaining,   breakRemaining);
   localStorage.setItem(LS.breakDuration,    breakDuration);
   localStorage.setItem(LS.breakStartTime,   breakStartTime   ?? '');
-  localStorage.setItem(LS.breakEarnedStart,     breakEarnedStartTime ?? '');
+  localStorage.setItem(LS.pauseStart,     pauseStartTime ?? '');
   localStorage.setItem(LS.currentInterruptions, JSON.stringify(currentInterruptions));
 }
 
@@ -267,7 +267,7 @@ function restoreSession() {
   accumulatedBreak    = lsInt(LS.accumulatedBreak);
   segmentStartSeconds = lsInt(LS.segmentStart);
   workSeconds         = lsInt(LS.workSeconds);
-  breakEarned         = lsInt(LS.breakEarned);
+  pauseEarned         = lsInt(LS.pauseEarned);
   bonusEarned         = lsInt(LS.bonusEarned);
   breakSeconds        = lsInt(LS.breakSeconds);
   breakRemaining      = lsInt(LS.breakRemaining);
@@ -275,14 +275,14 @@ function restoreSession() {
 
   const savedWorkStart  = lsInt(LS.workStartTime);
   const savedBreakStart = lsInt(LS.breakStartTime);
-  const savedBeStart    = localStorage.getItem(LS.breakEarnedStart);
+  const savedBeStart    = localStorage.getItem(LS.pauseStart);
 
   try {
     currentInterruptions = JSON.parse(localStorage.getItem(LS.currentInterruptions) || '[]');
   } catch (_) { currentInterruptions = []; }
 
   if (savedState === STATE.WORKING || savedState === STATE.INTERRUPTED) {
-    // INTERRUPTED se restaura como BREAK_EARNED: el trabajo se considera parado
+    // INTERRUPTED se restaura como PAUSE: el trabajo se considera parado
     if (savedWorkStart) {
       workStartTime = savedWorkStart;
       // Para INTERRUPTED, workSeconds está congelado (no avanza durante la interrupción)
@@ -291,16 +291,16 @@ function restoreSession() {
       }
       // savedState === INTERRUPTED: workSeconds ya tiene el valor congelado, no se actualiza
     }
-    breakEarned  = Math.floor(workSeconds * cfg.breakRatio / cfg.ratio);
+    pauseEarned  = Math.floor(workSeconds * cfg.breakRatio / cfg.ratio);
     bonusEarned  = calcBonusEarned(workSeconds - segmentStartSeconds);
-    breakSeconds = breakEarned + bonusEarned + accumulatedBreak;
-    state        = STATE.BREAK_EARNED;
-    breakEarnedStartTime = Date.now();
+    breakSeconds = pauseEarned + bonusEarned + accumulatedBreak;
+    state        = STATE.PAUSE;
+    pauseStartTime = Date.now();
     intervalId   = setInterval(tick, 1000);
 
-  } else if (savedState === STATE.BREAK_EARNED) {
-    state = STATE.BREAK_EARNED;
-    breakEarnedStartTime = savedBeStart ? parseInt(savedBeStart, 10) : Date.now();
+  } else if (savedState === STATE.PAUSE) {
+    state = STATE.PAUSE;
+    pauseStartTime = savedBeStart ? parseInt(savedBeStart, 10) : Date.now();
     intervalId = setInterval(tick, 1000);
 
   } else if (savedState === STATE.BREAK) {
@@ -316,8 +316,8 @@ function restoreSession() {
       accumulatedBreak     = 0;
       breakSeconds         = 0;
       playEndSound();
-      breakEarnedStartTime = Date.now();
-      state                = STATE.BREAK_EARNED;
+      pauseStartTime = Date.now();
+      state                = STATE.PAUSE;
       intervalId           = setInterval(tick, 1000);
       return;
     }
@@ -386,14 +386,14 @@ function render() {
       : '⚡';
     interruptPanel.hidden = true;
 
-  } else if (state === STATE.BREAK_EARNED) {
-    const pauseDur = breakEarnedStartTime
-      ? Math.floor((Date.now() - breakEarnedStartTime) / 1000)
+  } else if (state === STATE.PAUSE) {
+    const pauseDur = pauseStartTime
+      ? Math.floor((Date.now() - pauseStartTime) / 1000)
       : 0;
 
     timerEl.textContent   = formatTime(breakSeconds);
     timerEl.className     = 'break-earned';
-    infoEl.innerHTML      = buildBreakEarnedInfoHtml(pauseDur);
+    infoEl.innerHTML      = buildPauseInfoHtml(pauseDur);
     statusEl.innerHTML    = `Trabajado: <strong>${formatTime(workSeconds)}</strong>`;
 
     // Timer de pausa visible solo a partir de los 3 minutos
@@ -451,11 +451,11 @@ const buildBreakInfoHtml = () => {
   const carryLine  = accumulatedBreak > 0
     ? `<br>Descanso acumulado: <strong>${formatShortTime(accumulatedBreak)}</strong>`
     : '';
-  return `Descanso obtenido: <strong>${formatShortTime(breakEarned)}</strong>${bonusBadge}${carryLine}`;
+  return `Descanso obtenido: <strong>${formatShortTime(pauseEarned)}</strong>${bonusBadge}${carryLine}`;
 };
 
-// HTML para BREAK_EARNED incluyendo mensajes de pausa progresivos (F_PAUSE)
-function buildBreakEarnedInfoHtml(pauseDur) {
+// HTML para PAUSE incluyendo mensajes de pausa progresivos (F_PAUSE)
+function buildPauseInfoHtml(pauseDur) {
   const breakLine = buildBreakInfoHtml();
   if (pauseDur < 60)  return breakLine;
   if (pauseDur < 180) return breakLine
@@ -478,7 +478,7 @@ function reloadCfg() {
 function updateTabTitle() {
   const showTime = lsBool(LS_CFG.showInTitle); // lee directamente de LS (panel en shell)
   const title = showTime && state === STATE.WORKING      ? `▶ ${formatTime(workSeconds)} — Flowmodoro`
-              : showTime && state === STATE.BREAK_EARNED ? `⏸ ${formatTime(breakSeconds)} — Flowmodoro`
+              : showTime && state === STATE.PAUSE ? `⏸ ${formatTime(breakSeconds)} — Flowmodoro`
               : showTime && state === STATE.BREAK        ? `☕ ${formatTime(breakRemaining)} — Flowmodoro`
               : 'Flowmodoro';
   document.title = title;
@@ -489,7 +489,7 @@ function updateTabTitle() {
 function tick() {
   if      (state === STATE.WORKING)      updateWorkTimer();
   else if (state === STATE.BREAK)        updateBreakTimer();
-  else if (state === STATE.BREAK_EARNED) render(); // refresca el timer de pausa
+  else if (state === STATE.PAUSE) render(); // refresca el timer de pausa
   else if (state === STATE.INTERRUPTED)  render(); // refresca el timer de interrupción
 }
 
@@ -499,7 +499,7 @@ function updateWorkTimer() {
   render();
 }
 
-// Recalcula el tiempo restante del descanso; si llega a 0 va a BREAK_EARNED
+// Recalcula el tiempo restante del descanso; si llega a 0 va a PAUSE
 function updateBreakTimer() {
   breakRemaining = Math.max(0, breakDuration - Math.floor((Date.now() - breakStartTime) / 1000));
   if (breakRemaining <= 0) {
@@ -508,9 +508,9 @@ function updateBreakTimer() {
     accumulatedBreak = 0;
     breakSeconds = 0; // descanso consumido
     playEndSound();
-    // Según spec: el descanso terminado lleva a BREAK_EARNED, no a IDLE
-    breakEarnedStartTime = Date.now();
-    state        = STATE.BREAK_EARNED;
+    // Según spec: el descanso terminado lleva a PAUSE, no a IDLE
+    pauseStartTime = Date.now();
+    state        = STATE.PAUSE;
     intervalId   = setInterval(tick, 1000);
     render();
   } else {
@@ -520,15 +520,15 @@ function updateBreakTimer() {
 
 // ── Helpers de pausa (F_PAUSE) ─────────────────────────────────────────────
 
-// Registra la pausa actual si supera 30 segundos, luego limpia breakEarnedStartTime.
-// Llamado al salir de BREAK_EARNED hacia startBreak() o continueWork().
+// Registra la pausa actual si supera 30 segundos, luego limpia pauseStartTime.
+// Llamado al salir de PAUSE hacia startBreak() o continueWork().
 function recordPauseIfNeeded() {
-  if (!breakEarnedStartTime) return;
-  const dur = Math.floor((Date.now() - breakEarnedStartTime) / 1000);
+  if (!pauseStartTime) return;
+  const dur = Math.floor((Date.now() - pauseStartTime) / 1000);
   if (dur >= 30) {
-    updateLastEntryWithPause({ durationSeconds: dur, startTs: breakEarnedStartTime });
+    updateLastEntryWithPause({ durationSeconds: dur, startTs: pauseStartTime });
   }
-  breakEarnedStartTime = null;
+  pauseStartTime = null;
 }
 
 // ── Transiciones de estado (F3 — interrupciones) ──────────────────────────
@@ -580,13 +580,13 @@ function startWork() {
 function stopWork() {
   clearInterval(intervalId);
   intervalId   = null;
-  breakEarned  = Math.floor(workSeconds * cfg.breakRatio / cfg.ratio);
+  pauseEarned  = Math.floor(workSeconds * cfg.breakRatio / cfg.ratio);
   bonusEarned  = calcBonusEarned(workSeconds - segmentStartSeconds);
-  breakSeconds = breakEarned + bonusEarned + accumulatedBreak;
+  breakSeconds = pauseEarned + bonusEarned + accumulatedBreak;
   saveHistoryEntry();
   currentInterruptions = []; // las interrupciones ya se guardaron en la entrada del historial
-  breakEarnedStartTime = Date.now();
-  state        = STATE.BREAK_EARNED;
+  pauseStartTime = Date.now();
+  state        = STATE.PAUSE;
   intervalId   = setInterval(tick, 1000); // sigue tickeando para medir la pausa
   render();
 }
@@ -603,13 +603,13 @@ function startBreak() {
   render();
 }
 
-// F7 — Salto directo WORKING → BREAK (sin pasar por BREAK_EARNED)
+// F7 — Salto directo WORKING → BREAK (sin pasar por PAUSE)
 function startBreakDirect() {
   clearInterval(intervalId);
   intervalId   = null;
-  breakEarned  = Math.floor(workSeconds * cfg.breakRatio / cfg.ratio);
+  pauseEarned  = Math.floor(workSeconds * cfg.breakRatio / cfg.ratio);
   bonusEarned  = calcBonusEarned(workSeconds - segmentStartSeconds);
-  breakSeconds = breakEarned + bonusEarned + accumulatedBreak;
+  breakSeconds = pauseEarned + bonusEarned + accumulatedBreak;
   saveHistoryEntry();
   currentInterruptions = [];
   breakDuration  = breakSeconds;
@@ -624,7 +624,7 @@ function skipBreak() {
   clearInterval(intervalId);
   intervalId           = null;
   accumulatedBreak     = breakRemaining; // el sobrante se lleva a la siguiente sesión
-  breakEarnedStartTime = null;
+  pauseStartTime = null;
   returnToIdle();
 }
 
@@ -632,7 +632,7 @@ function skipBreak() {
 function returnToIdle() {
   clearInterval(intervalId);
   intervalId           = null;
-  breakEarnedStartTime = null;
+  pauseStartTime = null;
   workSeconds          = 0;
   segmentStartSeconds  = 0;
   bonusEarned          = 0;
@@ -659,14 +659,14 @@ function resetAll() {
   intervalId           = null;
   workSeconds          = 0;
   segmentStartSeconds  = 0;
-  breakEarned          = 0;
+  pauseEarned          = 0;
   bonusEarned          = 0;
   breakSeconds         = 0;
   breakRemaining       = 0;
   breakDuration        = 0;
   workStartTime        = null;
   breakStartTime       = null;
-  breakEarnedStartTime = null;
+  pauseStartTime = null;
   interruptStartTime   = null;
   currentInterruptions = [];
   accumulatedBreak     = 0;
@@ -684,7 +684,7 @@ btnEl.addEventListener('click', () => {
   const actions = {
     [STATE.IDLE]:         startWork,
     [STATE.WORKING]:      stopWork,
-    [STATE.BREAK_EARNED]: startBreak,
+    [STATE.PAUSE]: startBreak,
     [STATE.BREAK]:        skipBreak,
     [STATE.INTERRUPTED]:  resumeFromInterrupt,
   };
@@ -702,11 +702,11 @@ btnInterruptEl.addEventListener('click', () => {
 });
 
 btn2El.addEventListener('click', () => {
-  if (state === STATE.BREAK_EARNED) { accumulatedBreak = 0; returnToIdle(); }
+  if (state === STATE.PAUSE) { accumulatedBreak = 0; returnToIdle(); }
 });
 
 btn3El.addEventListener('click', () => {
-  if (state === STATE.BREAK_EARNED) continueWork();
+  if (state === STATE.PAUSE) continueWork();
 });
 
 // Mensajes del shell: configuración actualizada, historial abierto, reset confirmado

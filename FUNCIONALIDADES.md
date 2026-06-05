@@ -12,17 +12,17 @@ Documento de referencia para pruebas y contexto. Cubre todo el comportamiento es
 |---|---|---|
 | IDLE | Tiempo de la última sesión (o 00:00:00) | ▶ Iniciar |
 | WORKING | Tiempo trabajado (cuenta hacia arriba) | ⏸ Pausar |
-| BREAK_EARNED | Tiempo de descanso ganado | ▶ Iniciar descanso |
+| PAUSE | Tiempo de descanso ganado | ▶ Iniciar descanso |
 | BREAK | Tiempo de descanso restante (cuenta atrás) | ⏭ Saltar descanso |
 
 ### Flujo normal
 
 - [ ] **Iniciar** desde IDLE → pasa a WORKING, timer empieza a contar
-- [ ] **Parar** desde WORKING → pasa a BREAK_EARNED, muestra descanso ganado y tiempo trabajado
-- [ ] **Iniciar descanso** desde BREAK_EARNED → pasa a BREAK, cuenta atrás del descanso
+- [ ] **Parar** desde WORKING → pasa a PAUSE, muestra descanso ganado y tiempo trabajado
+- [ ] **Iniciar descanso** desde PAUSE → pasa a BREAK, cuenta atrás del descanso
 - [ ] **Descanso termina** (llega a 0) → suena pitido, vuelve a IDLE
 - [ ] **Saltar descanso** desde BREAK → el tiempo restante se guarda como carry-over, vuelve a IDLE
-- [ ] **Continuar →** desde BREAK_EARNED → vuelve a WORKING sin perder el tiempo trabajado
+- [ ] **Continuar →** desde PAUSE → vuelve a WORKING sin perder el tiempo trabajado
 
 ### Descanso acumulado (carry-over)
 
@@ -38,7 +38,7 @@ Documento de referencia para pruebas y contexto. Cubre todo el comportamiento es
 - [ ] Durante WORKING se muestra el progreso: `objetivo: MM:SS / MM:SS`
 - [ ] Si hay ciclos completados se muestra: `★ ×N · MM:SS / MM:SS`
 - [ ] Al pulsar **Continuar →** el progreso del bonus se resetea para el nuevo segmento (el total de trabajo sigue)
-- [ ] En BREAK_EARNED el bonus ganado se muestra en verde: `+MM:SS bonus`
+- [ ] En PAUSE el bonus ganado se muestra en verde: `+MM:SS bonus`
 - [ ] Si `bonusMinutes = 0` el bonus está desactivado (no se muestra nada)
 
 ### Panel de configuración (⚙)
@@ -56,7 +56,7 @@ Documento de referencia para pruebas y contexto. Cubre todo el comportamiento es
 
 - [ ] IDLE → `Flowmodoro`
 - [ ] WORKING → `▶ HH:MM:SS — Flowmodoro`
-- [ ] BREAK_EARNED → `⏸ HH:MM:SS — Flowmodoro`
+- [ ] PAUSE → `⏸ HH:MM:SS — Flowmodoro`
 - [ ] BREAK → `☕ HH:MM:SS — Flowmodoro`
 - [ ] Si el checkbox está desactivado → siempre `Flowmodoro`
 - [ ] Funciona correctamente aunque el app corra dentro de un iframe (usa postMessage al documento padre)
@@ -71,8 +71,8 @@ Documento de referencia para pruebas y contexto. Cubre todo el comportamiento es
 
 ### Persistencia entre recargas (Flowmodoro)
 
-- [ ] Cerrar en **WORKING** → al reabrir, recalcula el tiempo real transcurrido y restaura como BREAK_EARNED
-- [ ] Cerrar en **BREAK_EARNED** → restaura BREAK_EARNED con los valores correctos
+- [ ] Cerrar en **WORKING** → al reabrir, recalcula el tiempo real transcurrido y restaura como PAUSE
+- [ ] Cerrar en **PAUSE** → restaura PAUSE con los valores correctos
 - [ ] Cerrar en **BREAK** → restaura BREAK, reanuda el countdown con el tiempo real restante
 - [ ] Si el descanso expiró mientras la pestaña estaba cerrada → va directo a IDLE al reabrir
 - [ ] Cerrar en **IDLE** → restaura IDLE con el carry-over (si lo había)
