@@ -64,6 +64,7 @@ const deleteBtn           = document.getElementById('delete-btn');
 const titleDisplay        = document.getElementById('title-display');
 const timerEl             = document.getElementById('timer');
 const cancelBtn           = document.getElementById('cancel-btn');
+const restartBtn          = document.getElementById('restart-btn');
 const doneDeleteBtn       = document.getElementById('done-delete-btn');
 const endTimeLabelEl      = document.getElementById('end-time-label');
 const modeTimeBtnEl       = document.getElementById('mode-time-btn');
@@ -251,9 +252,10 @@ function render() {
       timerEl.textContent = formatShortTime(cdRemaining);
       timerEl.className   = cdState === CD.RUNNING ? 'running' : 'done';
 
-      cancelBtn.textContent = cdState === CD.RUNNING ? '✎ Editar' : '↺ Reiniciar';
+      cancelBtn.textContent = '✎ Editar';
       cancelBtn.className   = '';
 
+      restartBtn.hidden    = cdState !== CD.DONE;
       doneDeleteBtn.hidden  = cdState !== CD.DONE;
       endTimeLabelEl.hidden = cdState !== CD.RUNNING;
       if (cdState === CD.RUNNING) endTimeLabelEl.textContent = formatEndTime();
@@ -364,7 +366,8 @@ function startCountdown() {
       }, { once: true });
       return;
     }
-    cdTarget = Date.now() + totalSecs * 1000;
+    cdTarget    = Date.now() + totalSecs * 1000;
+    durInputVal = val; // guardar para precargarlo al editar y poder reiniciar
   } else {
     // Modo hora fin: si la hora ya pasó hoy, la programamos para mañana
     const parts  = val.split(':').map(Number);
@@ -430,6 +433,31 @@ function resetCountdown() {
   cdState     = CD.IDLE;
   cdRemaining = 0;
   tomorrowNote.hidden = true;
+  render();
+}
+
+// DONE → RUNNING directamente, reutilizando los mismos parámetros originales
+function restartCountdown() {
+  clearTimeout(cdInterval);
+  cdInterval = null;
+
+  if (cdMode === 'duration') {
+    const totalSecs = parseDuration(durInputVal);
+    if (totalSecs <= 0) return;
+    cdTarget = Date.now() + totalSecs * 1000;
+  } else {
+    const parts = timeInputVal.split(':').map(Number);
+    if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return;
+    const target = new Date();
+    target.setHours(parts[0], parts[1], 0, 0);
+    if (target <= new Date()) target.setDate(target.getDate() + 1);
+    cdTarget = target.getTime();
+  }
+
+  cdRemaining         = getSecondsRemaining();
+  cdState             = CD.RUNNING;
+  tomorrowNote.hidden = true;
+  scheduleNextTick();
   render();
 }
 
@@ -503,6 +531,8 @@ cancelBtn.addEventListener('click', () => {
   if (cdState === CD.RUNNING) editToIdle();
   else if (cdState === CD.DONE) resetCountdown();
 });
+
+restartBtn.addEventListener('click', restartCountdown);
 
 // Botones de eliminar: en el panel expandido (DONE) y en el header colapsado (DONE)
 deleteBtn.addEventListener('click',           deleteCountdown);
